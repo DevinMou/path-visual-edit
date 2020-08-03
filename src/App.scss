@@ -5,6 +5,16 @@
   .main {
     flex: 1 1 auto;
     background-color: #eeeeee;
+    .board {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      .canvas {
+        width: 400px;
+        height: 400px;
+        background-color: #ffffff;
+      }
+    }
   }
   .points {
     width: 300px;

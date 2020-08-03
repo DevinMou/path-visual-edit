@@ -1,4 +1,4 @@
-import React, { useState, ChangeEvent, useEffect } from 'react';
+import React, { useState, ChangeEvent, useEffect, useLayoutEffect } from 'react';
 import './App.scss';
 import Select from './components/select'
 
@@ -33,16 +33,24 @@ const pointType: {value: any;label: string}[] = [
   {value:'Z',label:'Z'}]
 
 function App() {
+  useLayoutEffect(()=>{
+    
+  },[])
   const [points,setPoints] = useState<Point[]>([{
     type: 'M',
     arguments: [10, 10]
   }])
-  const handleChange = (event: ChangeEvent) => {
-    console.log(event)
+  const [unfold, setUnFold] = useState(false)
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>,pointIndex:number,argumentIndex:number) => {
+    const arr = [...points]
+    arr[pointIndex].arguments[argumentIndex] = event.target?.value
+    setPoints(arr)
   }
-  const extendOption = (el: HTMLElement) => {
-    const e = new MouseEvent('click')
-    el.dispatchEvent(e)
+  const appendPoint = () => {
+    const arr = [...points]
+    arr.push({type:'M',arguments:[]})
+    setUnFold(true)
+    setPoints(arr)    
   }
   const selectChange = (value: any, index: number) => {
     const arr = [...points]
@@ -50,11 +58,12 @@ function App() {
     setPoints(arr)
   }
   useEffect(()=>{
-
+    setUnFold(false)
   }, [points])
   return (
     <div className="App">
       <div className="main">
+        <div className="x-ruler"></div>
         <div className="board">
           <div className="canvas"></div>
         </div>
@@ -63,26 +72,19 @@ function App() {
         <div className="bezier-model"></div>
       </div>
       <div className="points">
-        <select defaultValue="M">
-          <option value="M">M</option>
-          <option value="A">A</option>
-          <option value="D">D</option>
-          <option value="E">E</option>
-          <option value="T">T</option>
-        </select>
         {
           points.map((item,index)=>(
             <div className="point" key={index}>
-              <div>
-                <Select value={item.type} options={pointType} handleChange={value=>selectChange(value,index)}></Select>
-              </div>
-              <div>
+              <Select className="point-type" unfold={unfold&&index===points.length-1} value={item.type} options={pointType} handleChange={value=>selectChange(value,index)}></Select>
+              <div className="point-arguments">
                 {
                   pointArguments[item.type].map((item$,index$) => (
-                    <span key={index$}>
-                      <label>{item$}
-                        <input type="text" value={item.arguments[index$]} onChange={event=>handleChange(event)} name={`${item.type}:${item$}`}/>
-                      </label>
+                    <span className="point-argument" key={item.type+index$}>
+                      <label>{item$}</label>
+                      <span className="box">
+                        <span>{item.arguments[index$]}</span>
+                        <input type="text" value={item.arguments[index$]||''} onChange={event=>handleChange(event,index,index$)} name={`${item.type}:${item$}`}/>
+                      </span>
                     </span>
                   ))
                 }
@@ -91,7 +93,7 @@ function App() {
             
           ))
         }
-        <button>add point</button>
+        <button onClick={appendPoint}>add point</button>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
-import React, { useState, ChangeEvent, useEffect, useLayoutEffect } from 'react';
+import React, { useState, ChangeEvent, useEffect, useLayoutEffect, useRef } from 'react';
 import './App.scss';
 import Select from './components/select'
+import {TouchItem, RegisterType, touchContext} from './components/touch'
 
 interface Point {
   type: string,
@@ -34,13 +35,19 @@ const pointType: {value: any;label: string}[] = [
 
 function App() {
   useLayoutEffect(()=>{
-    
+
   },[])
   const [points,setPoints] = useState<Point[]>([{
     type: 'M',
     arguments: [10, 10]
   }])
+
+  const [canvasSize,setCanvasSize] = useState<number[]>([400,400])
+
   const [unfold, setUnFold] = useState(false)
+
+  const touchRef = useRef<RegisterType>(null)
+
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>,pointIndex:number,argumentIndex:number) => {
     const arr = [...points]
     arr[pointIndex].arguments[argumentIndex] = event.target?.value
@@ -60,16 +67,23 @@ function App() {
   useEffect(()=>{
     setUnFold(false)
   }, [points])
+  useEffect(()=>{
+    if(touchRef.current){
+      touchRef.current.register({
+      })
+    }
+  },[])
   return (
     <div className="App">
       <div className="main">
-        <div className="x-ruler"></div>
-        <div className="board">
-          <div className="canvas"></div>
-        </div>
-        <div className="line-model"></div>
-        <div className="arc-model"></div>
-        <div className="bezier-model"></div>
+        <TouchItem ref={touchRef} className="touch-main">
+          <div className="board">
+            <div className="canvas" style={{width:canvasSize[0]+'px',height:canvasSize[1]+'px'}}></div>
+          </div>
+          <div className="line-model"></div>
+          <div className="arc-model"></div>
+          <div className="bezier-model"></div>
+        </TouchItem>
       </div>
       <div className="points">
         {

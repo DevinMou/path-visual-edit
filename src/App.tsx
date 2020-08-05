@@ -48,6 +48,8 @@ function App() {
 
   const touchRef = useRef<RegisterType>(null)
 
+  const mainRef = useRef<HTMLDivElement>(null)
+
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>,pointIndex:number,argumentIndex:number) => {
     const arr = [...points]
     arr[pointIndex].arguments[argumentIndex] = event.target?.value
@@ -64,6 +66,18 @@ function App() {
     arr[index] = {type:value,arguments:[]}
     setPoints(arr)
   }
+  const wheelHandle = (event:WheelEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    console.log(event.deltaX,event.deltaY,event.ctrlKey,event.deltaMode)
+  }
+  useEffect(()=>{
+    const $main = mainRef.current
+    $main?.addEventListener('wheel',wheelHandle,{passive:false})
+    return ()=> {
+      $main?.removeEventListener('wheel',wheelHandle)
+    }
+  },[])
   useEffect(()=>{
     setUnFold(false)
   }, [points])
@@ -75,7 +89,7 @@ function App() {
   },[])
   return (
     <div className="App">
-      <div className="main">
+      <div className="main" ref={mainRef}>
         <TouchItem ref={touchRef} className="touch-main">
           <div className="board">
             <div className="canvas" style={{width:canvasSize[0]+'px',height:canvasSize[1]+'px'}}></div>

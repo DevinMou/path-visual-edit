@@ -1,9 +1,15 @@
+/* eslint-disable no-extend-native */
 import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.scss';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
 
+if(!Array.prototype.last){
+  Array.prototype.last = function(){
+    return this[this.length - 1]
+  }
+}
 ReactDOM.render(
   <React.StrictMode>
     <App />

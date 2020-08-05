@@ -1,3 +1,4 @@
+/* eslint-disable no-extend-native */
 import React, { useState, ChangeEvent, useEffect, useLayoutEffect, useRef } from 'react';
 import './App.scss';
 import Select from './components/select'
@@ -33,6 +34,47 @@ const pointType: {value: any;label: string}[] = [
   {value:'A',label:'A'},
   {value:'Z',label:'Z'}]
 
+class Animate {
+  pool: any[]
+  fn: (args:any)=>void
+  active: boolean
+  running: boolean
+  direct: boolean
+  constructor(fn:(args:any)=>void, direct?:boolean) {
+    this.pool = []
+    this.fn = fn
+    this.active = false
+    this.running = false
+    this.direct = !!direct
+  }
+  push(payload:any) {
+    this.running = true
+    this.pool.push(payload)
+    this.check()
+  }
+  stop() {
+    this.running = false
+  }
+  check() {
+    if (this.pool.length && !this.active) {
+      this.active = true
+      window.requestAnimationFrame(this.done.bind(this))
+    }
+  }
+  done() {
+    const args = [...this.pool]
+    this.pool.length = 0
+    if (this.running) {
+      this.fn(this.direct ? args.last() : args)
+      this.active = false
+      this.check()
+    } else {
+      this.active = false
+    }
+  }
+}
+
+
 function App() {
   useLayoutEffect(()=>{
 
@@ -50,6 +92,14 @@ function App() {
 
   const mainRef = useRef<HTMLDivElement>(null)
 
+  const context = useRef<{wheelAnimate?:Animate}>({}).current
+
+  const wheel = (payload:number[])=> {
+    console.log(payload)
+  } 
+  if(!context.wheelAnimate){
+    context.wheelAnimate = new Animate(wheel,true)
+  }
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>,pointIndex:number,argumentIndex:number) => {
     const arr = [...points]
     arr[pointIndex].arguments[argumentIndex] = event.target?.value
@@ -69,7 +119,12 @@ function App() {
   const wheelHandle = (event:WheelEvent) => {
     event.preventDefault()
     event.stopPropagation()
-    console.log(event.deltaX,event.deltaY,event.ctrlKey,event.deltaMode)
+    if(String(event.deltaY).includes('.')){
+      let t = event.deltaY
+      1 === event.deltaMode && (t*=15)
+      const e = event.ctrlKey,i = window.navigator.appVersion.includes('Mac') ? 4e3 : 2e3,n = t/(e?100:i)
+      context.wheelAnimate?.push([0,-n])
+    }
   }
   useEffect(()=>{
     const $main = mainRef.current

@@ -86,13 +86,15 @@ function App() {
 
   const [canvasSize,setCanvasSize] = useState<number[]>([400,400])
 
+  const [canvasTransform,setCanvasTransform] = useState<number[]>([50,50,1,0,0]) // origin,scale,translate
+
   const [unfold, setUnFold] = useState(false)
 
   const touchRef = useRef<RegisterType>(null)
 
   const mainRef = useRef<HTMLDivElement>(null)
 
-  const context = useRef<{wheelAnimate?:Animate}>({}).current
+  const context = useRef<{wheelAnimate?:Animate,$mainWidth?:number,$mainHeight?:number}>({}).current
 
   const wheel = (payload:number[])=> {
     console.log(payload)
@@ -123,12 +125,19 @@ function App() {
       let t = event.deltaY
       1 === event.deltaMode && (t*=15)
       const e = event.ctrlKey,i = window.navigator.appVersion.includes('Mac') ? 4e3 : 2e3,n = t/(e?100:i)
-      context.wheelAnimate?.push([0,-n])
+
+      
+      context.wheelAnimate?.push([0,-n,event.pageX,event.pageY])
     }
   }
   useEffect(()=>{
     const $main = mainRef.current
-    $main?.addEventListener('wheel',wheelHandle,{passive:false})
+    if($main){
+      $main.addEventListener('wheel',wheelHandle,{passive:false})
+      const {width,height} = $main?.getBoundingClientRect()
+      context.$mainWidth = width
+      context.$mainHeight = height
+    }
     return ()=> {
       $main?.removeEventListener('wheel',wheelHandle)
     }

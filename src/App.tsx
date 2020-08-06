@@ -86,7 +86,9 @@ function App() {
 
   const [canvasSize,setCanvasSize] = useState<number[]>([400,400])
 
-  const [canvasTransform,setCanvasTransform] = useState<number[]>([50,50,1,0,0]) // origin,scale,translate
+  const [origin,setOrigin] = useState<number[]>([])
+
+  const [canvasTransform,setCanvasTransform] = useState<number[]>([0.5,0.5,1,0,0]) // origin,scale,translate
 
   const [unfold, setUnFold] = useState(false)
 
@@ -96,8 +98,22 @@ function App() {
 
   const context = useRef<{wheelAnimate?:Animate,$mainWidth?:number,$mainHeight?:number}>({}).current
 
-  const wheel = (payload:number[])=> {
-    console.log(payload)
+  const getNewTransform = (x:number,y:number)=>{
+    const [cw,ch] = canvasSize,sw = context.$mainWidth||0,sh = context.$mainHeight||0,[ox,oy,s,dx,dy]=canvasTransform
+    if(origin[0]!==undefined&&origin[0]===x&&origin[1]===y){
+      return false
+    }
+    const A = [cw*ox*(1-s)+(sw-cw)/2+dx,ch*oy*(1-s)+(sh-ch)/2+dy]
+    const O = [(x-A[0])/cw/s,(y-A[1])/ch/s]
+    const O2 = [(sw-cw)/2+cw*O[0],(sh-ch)/2+ch*O[1]]
+    setOrigin([x,y])
+    return [...O,s,O[0]-O2[0],O[1]-O2[1]]
+  }
+
+  const wheel = (payload:[number,any])=> {
+    if (payload[0]===0){
+      setCanvasTransform(payload[1])
+    }
   } 
   if(!context.wheelAnimate){
     context.wheelAnimate = new Animate(wheel,true)
@@ -126,8 +142,14 @@ function App() {
       1 === event.deltaMode && (t*=15)
       const e = event.ctrlKey,i = window.navigator.appVersion.includes('Mac') ? 4e3 : 2e3,n = t/(e?100:i)
 
-      
-      context.wheelAnimate?.push([0,-n,event.pageX,event.pageY])
+      let newTransform = getNewTransform(event.pageX,event.pageY)
+      if (newTransform) {
+        newTransform[2] += -n
+      } else {
+        newTransform = [...canvasTransform]
+        newTransform[2] += -n
+      }
+      context.wheelAnimate?.push([0,newTransform])
     }
   }
   useEffect(()=>{
@@ -156,7 +178,7 @@ function App() {
       <div className="main" ref={mainRef}>
         <TouchItem ref={touchRef} className="touch-main">
           <div className="board">
-            <div className="canvas" style={{width:canvasSize[0]+'px',height:canvasSize[1]+'px'}}></div>
+            <div className="canvas" style={{width:canvasSize[0]+'px',height:canvasSize[1]+'px',transformOrigin:`${canvasTransform[0]*100}% ${canvasTransform[1]*100}%`,transform:`scale(${canvasTransform[2]}) translate(${canvasTransform[3]}px,${canvasTransform[4]}px)`}}></div>
           </div>
           <div className="line-model"></div>
           <div className="arc-model"></div>

@@ -98,7 +98,6 @@ function App() {
 
   const getNewTransform = (x:number,y:number)=>{
     const [cw,ch] = canvasSize,sw = context.$mainWidth||0,sh = context.$mainHeight||0,[ox,oy,s,dx,dy]=context.transform
-    // console.log(ox,oy,s,dx,dy)
     if(context.origin && context.origin[0]!==undefined&&context.origin[0]===x&&context.origin[1]===y){
       return context.transform
     }
@@ -106,14 +105,11 @@ function App() {
     const O = [(x-A[0])/cw/s,(y-A[1])/ch/s]
     const O2 = [(sw-cw)/2+cw*O[0],(sh-ch)/2+ch*O[1]]
     context.origin = [x,y]
-    console.log(104,x,y,O2[0],O2[1])
     return [...O,s,x-O2[0],y-O2[1]]
   }
 
   const wheel = (payload:any[any])=> {
-    if (payload[0]===0){
-      setCanvasTransform([...payload[1]])
-    }
+    setCanvasTransform([...payload[1]])
   } 
   if(!context.wheelAnimate){
     context.wheelAnimate = new Animate(wheel,true)
@@ -145,6 +141,10 @@ function App() {
       newTransform[2] += -n
       context.transform = newTransform
       context.wheelAnimate?.push([0,newTransform])
+    }else{
+      context.transform[3] += -event.deltaX*1
+      context.transform[4] += -event.deltaY*1
+      context.wheelAnimate?.push([1,context.transform])
     }
   }
   useEffect(()=>{
@@ -173,7 +173,7 @@ function App() {
       <div className="main" ref={mainRef}>
         <TouchItem ref={touchRef} className="touch-main">
           <div className="board">
-            <div className="canvas" style={{width:canvasSize[0]+'px',height:canvasSize[1]+'px',transformOrigin:`${canvasTransform[0]*100}% ${canvasTransform[1]*100}%`,transform:`scale(${canvasTransform[2]}) translate(${canvasTransform[3]}px,${canvasTransform[4]}px)`}}></div>
+            <div className="canvas" style={{width:canvasSize[0]+'px',height:canvasSize[1]+'px',transformOrigin:`${canvasTransform[0]*100}% ${canvasTransform[1]*100}%`,transform:`translate(${canvasTransform[3]}px,${canvasTransform[4]}px) scale(${canvasTransform[2]})`}}></div>
           </div>
           <div className="line-model"></div>
           <div className="arc-model"></div>

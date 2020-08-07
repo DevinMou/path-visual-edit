@@ -86,8 +86,6 @@ function App() {
 
   const [canvasSize,setCanvasSize] = useState<number[]>([400,400])
 
-  const [origin,setOrigin] = useState<number[]>([])
-
   const [canvasTransform,setCanvasTransform] = useState<number[]>([0.5,0.5,1,0,0]) // origin,scale,translate
 
   const [unfold, setUnFold] = useState(false)
@@ -96,23 +94,25 @@ function App() {
 
   const mainRef = useRef<HTMLDivElement>(null)
 
-  const context = useRef<{wheelAnimate?:Animate,$mainWidth?:number,$mainHeight?:number}>({}).current
+  const context = useRef<{wheelAnimate?:Animate,$mainWidth?:number,$mainHeight?:number,origin?:number[],transform:number[]}>({origin:[],transform:[0.5,0.5,1,0,0]}).current
 
   const getNewTransform = (x:number,y:number)=>{
-    const [cw,ch] = canvasSize,sw = context.$mainWidth||0,sh = context.$mainHeight||0,[ox,oy,s,dx,dy]=canvasTransform
-    if(origin[0]!==undefined&&origin[0]===x&&origin[1]===y){
-      return false
+    const [cw,ch] = canvasSize,sw = context.$mainWidth||0,sh = context.$mainHeight||0,[ox,oy,s,dx,dy]=context.transform
+    // console.log(ox,oy,s,dx,dy)
+    if(context.origin && context.origin[0]!==undefined&&context.origin[0]===x&&context.origin[1]===y){
+      return context.transform
     }
     const A = [cw*ox*(1-s)+(sw-cw)/2+dx,ch*oy*(1-s)+(sh-ch)/2+dy]
     const O = [(x-A[0])/cw/s,(y-A[1])/ch/s]
     const O2 = [(sw-cw)/2+cw*O[0],(sh-ch)/2+ch*O[1]]
-    setOrigin([x,y])
-    return [...O,s,O[0]-O2[0],O[1]-O2[1]]
+    context.origin = [x,y]
+    console.log(104,x,y,O2[0],O2[1])
+    return [...O,s,x-O2[0],y-O2[1]]
   }
 
-  const wheel = (payload:[number,any])=> {
+  const wheel = (payload:any[any])=> {
     if (payload[0]===0){
-      setCanvasTransform(payload[1])
+      setCanvasTransform([...payload[1]])
     }
   } 
   if(!context.wheelAnimate){
@@ -141,14 +141,9 @@ function App() {
       let t = event.deltaY
       1 === event.deltaMode && (t*=15)
       const e = event.ctrlKey,i = window.navigator.appVersion.includes('Mac') ? 4e3 : 2e3,n = t/(e?100:i)
-
       let newTransform = getNewTransform(event.pageX,event.pageY)
-      if (newTransform) {
-        newTransform[2] += -n
-      } else {
-        newTransform = [...canvasTransform]
-        newTransform[2] += -n
-      }
+      newTransform[2] += -n
+      context.transform = newTransform
       context.wheelAnimate?.push([0,newTransform])
     }
   }

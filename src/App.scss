@@ -24,9 +24,21 @@
     width: 300px;
     flex: 0 0 auto;
     .point {
-      padding: 5px;
+      padding: 5px 5px 5px 0;
       display: flex;
       align-items: center;
+      .select-area {
+        cursor: pointer;
+        align-self: stretch;
+        height: auto;
+        flex: 0 0 auto;
+        width: 15px;
+        border-right: 5px solid #ffffff;
+        background-color: #bfdbec;
+        &.active {
+          background-color: #40a3ff;
+        }
+      }
       .point-type {
         height: 34px;
         line-height: 34px;
@@ -64,6 +76,13 @@
               height: 100%;
               padding: 1px 5px;
               box-sizing: border-box;
+              text-align: center;
+              border: 0;
+              background: #e5eef5;
+              &:focus {
+                outline: 0;
+                background: #a1cffa;
+              }
             }
           }
         }

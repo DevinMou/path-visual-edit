@@ -5,21 +5,22 @@ import Select from './components/select'
 import {TouchItem, RegisterType, touchContext} from './components/touch'
 
 interface Point {
-  type: string,
+  type: string
   arguments: any[]
+  preM: boolean|number[]
 }
 
-const pointArguments: {[key: string]: string[]} = {
-  M: ['x','y'],
-  L: ['x','y'],
-  H: ['x'],
-  V: ['y'],
-  C: ['x1','y1','x2','y2','x','y'],
-  S: ['x2','y2','x','y'],
-  Q: ['x1','y1','x','y'],
-  T: ['x','y'],
-  A: ['rx','ry','rotate','l-a','c-w','x','y'],
-  Z: [],
+const pointArguments: {[key: string]: {label?:string[];init?:(x:number,y:number)=>{preM:number[],arguments:number[]}}} = {
+  M: {label:['x','y'],init:(x,y)=>({preM:[x,y],arguments:[x+10,y+10]})},
+  L: {label:['x','y'],init:(x,y)=>({preM:[x,y],arguments:[x+50,y+50]})},
+  H: {label:['x'],init:(x,y)=>({preM:[x,y],arguments:[x+50]})},
+  V: {label:['y'],init:(x,y)=>({preM:[x,y],arguments:[y+50]})},
+  C: {label:['x1','y1','x2','y2','x','y'],init:(x,y)=>({preM:[x,y],arguments:[x+5,y-10,x+10,y-10,x+15,y]})},
+  S: {label:['x2','y2','x','y'],init:(x,y)=>({preM:[x,y],arguments:[x+10,y-15,x+20,y]})},
+  Q: {label:['x1','y1','x','y'],init:(x,y)=>({preM:[x,y],arguments:[x+10,y-15,x+20,y]})},
+  T: {label:['x','y'],init:(x,y)=>({preM:[x,y],arguments:[x+15,y]})},
+  A: {label:['rx','ry','rotate','l-a','c-w','x','y'],init:(x,y)=>({preM:[x,y],arguments:[]})},
+  Z: {},
 }
 
 const pointType: {value: any;label: string}[] = [
@@ -81,8 +82,11 @@ function App() {
   },[])
   const [points,setPoints] = useState<Point[]>([{
     type: 'M',
-    arguments: [10, 10]
+    arguments: [10, 10],
+    preM: false
   }])
+
+  const [pointActive, setPointActive] = useState<null|number>(null)
 
   const [canvasSize,setCanvasSize] = useState<number[]>([400,400])
 
@@ -90,9 +94,17 @@ function App() {
 
   const [unfold, setUnFold] = useState(false)
 
+  const [auxCanvas, setAuxCanvas] = useState<{width:number,height:number,show:boolean}>({width:400,height:400,show:false})
+
   const touchRef = useRef<RegisterType>(null)
 
   const mainRef = useRef<HTMLDivElement>(null)
+
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const auxRef = useRef<HTMLCanvasElement>(null)
+
+  const ctxRef = useRef<CanvasRenderingContext2D|undefined|null>()
+  const auxCtxRef = useRef<CanvasRenderingContext2D|undefined|null>()
 
   const context = useRef<{wheelAnimate?:Animate,$mainWidth?:number,$mainHeight?:number,origin?:number[],transform:number[]}>({origin:[],transform:[0.5,0.5,1,0,0]}).current
 
@@ -119,15 +131,26 @@ function App() {
     arr[pointIndex].arguments[argumentIndex] = event.target?.value
     setPoints(arr)
   }
+  const clickPoint = (event: React.MouseEvent,index: number) => {
+    if(event.target!==event.currentTarget) return
+    if(pointActive!==index){
+      setPointActive(index)
+
+    }else{
+
+      setPointActive(null)
+    }
+    console.log(points[index])
+  }
   const appendPoint = () => {
     const arr = [...points]
-    arr.push({type:'M',arguments:[]})
+    arr.push({type:'M',arguments:[],preM:[]})
     setUnFold(true)
     setPoints(arr)    
   }
-  const selectChange = (value: any, index: number) => {
+  const selectChange = (event: React.MouseEvent, value: any, index: number) => {
     const arr = [...points]
-    arr[index] = {type:value,arguments:[]}
+    arr[index] = {type:value,arguments:[],preM:event.shiftKey?true:[]}
     setPoints(arr)
   }
   const wheelHandle = (event:WheelEvent) => {
@@ -147,6 +170,32 @@ function App() {
       context.wheelAnimate?.push([1,context.transform])
     }
   }
+  const canvasRender = () => {
+    const ctx = ctxRef.current
+    if (ctx) {
+
+    }
+  }
+  const auxRender = () => {
+    if (pointActive===null||!points[pointActive]||!auxCtxRef.current) return
+    const active = points[pointActive]
+    const ctx = auxCtxRef.current
+    switch (active.type) {
+      case 'A':
+        const [rx,ry,rotation,l_a_f,s_f,x,y] = active.arguments
+        ctx.clearRect(0,0,auxCanvas.width,auxCanvas.height)
+        ctx.beginPath()
+        ctx.arc()
+        break
+      default:
+        break
+    }
+  }
+  useEffect(()=>{
+    ctxRef.current = canvasRef.current?.getContext('2d')
+    auxCtxRef.current = auxRef.current?.getContext('2d')
+  },[])
+
   useEffect(()=>{
     const $main = mainRef.current
     if($main){
@@ -173,7 +222,10 @@ function App() {
       <div className="main" ref={mainRef}>
         <TouchItem ref={touchRef} className="touch-main">
           <div className="board">
-            <div className="canvas" style={{width:canvasSize[0]+'px',height:canvasSize[1]+'px',transformOrigin:`${canvasTransform[0]*100}% ${canvasTransform[1]*100}%`,transform:`translate(${canvasTransform[3]}px,${canvasTransform[4]}px) scale(${canvasTransform[2]})`}}></div>
+            <div className="canvas" style={{width:canvasSize[0]+'px',height:canvasSize[1]+'px',transformOrigin:`${canvasTransform[0]*100}% ${canvasTransform[1]*100}%`,transform:`translate(${canvasTransform[3]}px,${canvasTransform[4]}px) scale(${canvasTransform[2]})`}}>
+              <canvas id="main-canvas" ref={canvasRef} width={canvasSize[0]} height={canvasSize[1]}></canvas>
+              <canvas id="aux-canvas" className={auxCanvas.show?'show':''} ref={auxRef} width={auxCanvas.width} height={auxCanvas.height}></canvas>
+            </div>
           </div>
           <div className="line-model"></div>
           <div className="arc-model"></div>
@@ -184,7 +236,8 @@ function App() {
         {
           points.map((item,index)=>(
             <div className="point" key={index}>
-              <Select className="point-type" unfold={unfold&&index===points.length-1} value={item.type} options={pointType} handleChange={value=>selectChange(value,index)}></Select>
+              <div className={`select-area${pointActive===index?' active':''}`} onClick={(event)=>clickPoint(event,index)}></div>
+              <Select className="point-type" unfold={unfold&&index===points.length-1} value={item.type} options={pointType} handleChange={(event,value)=>selectChange(event,value,index)}></Select>
               <div className="point-arguments">
                 {
                   pointArguments[item.type].map((item$,index$) => (

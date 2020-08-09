@@ -9,7 +9,7 @@ interface SelectProps<T> {
     value: T
     label: string
   }[]
-  handleChange: (arg:any)=>void
+  handleChange: (...args:any[])=>void
 }
 
 const Select:<T>({className,unfold,value,options,handleChange}:SelectProps<T>)=>React.FunctionComponentElement<SelectProps<T>> = ({className, unfold,value,options,handleChange})=> {
@@ -20,8 +20,8 @@ const Select:<T>({className,unfold,value,options,handleChange}:SelectProps<T>)=>
     options.forEach(item=>context.map.set(item.value,item.label))
     return context.map
   },[options, context.map])
-  const optionClick = (value:any)=>{
-    handleChange(value)
+  const optionClick = (event:React.MouseEvent,value:any)=>{
+    handleChange(event, value)
     setSelected(false)
   }
   useEffect(()=>{
@@ -33,7 +33,7 @@ const Select:<T>({className,unfold,value,options,handleChange}:SelectProps<T>)=>
       <span className="select-value" onClick={()=>setSelected(true)}>{dist.get(value)}</span>
       <span className={`select-options${selected?' active':''}`}>
         {
-          options.map((item,index)=><span key={index} className={value===item.value?'active':''} onClick={()=>optionClick(item.value)}>{item.label}</span>)
+          options.map((item,index)=><span key={index} className={value===item.value?'active':''} onClick={event=>optionClick(event,item.value)}>{item.label}</span>)
         }
       </span>
     </span>

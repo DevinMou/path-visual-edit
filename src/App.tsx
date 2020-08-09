@@ -6,20 +6,19 @@ import {TouchItem, RegisterType, touchContext} from './components/touch'
 
 interface Point {
   type: string
-  arguments: any[]
-  preM: boolean|number[]
+  arguments: number[]
 }
 
-const pointArguments: {[key: string]: {label?:string[];init?:(x:number,y:number)=>{preM:number[],arguments:number[]}}} = {
-  M: {label:['x','y'],init:(x,y)=>({preM:[x,y],arguments:[x+10,y+10]})},
-  L: {label:['x','y'],init:(x,y)=>({preM:[x,y],arguments:[x+50,y+50]})},
-  H: {label:['x'],init:(x,y)=>({preM:[x,y],arguments:[x+50]})},
-  V: {label:['y'],init:(x,y)=>({preM:[x,y],arguments:[y+50]})},
-  C: {label:['x1','y1','x2','y2','x','y'],init:(x,y)=>({preM:[x,y],arguments:[x+5,y-10,x+10,y-10,x+15,y]})},
-  S: {label:['x2','y2','x','y'],init:(x,y)=>({preM:[x,y],arguments:[x+10,y-15,x+20,y]})},
-  Q: {label:['x1','y1','x','y'],init:(x,y)=>({preM:[x,y],arguments:[x+10,y-15,x+20,y]})},
-  T: {label:['x','y'],init:(x,y)=>({preM:[x,y],arguments:[x+15,y]})},
-  A: {label:['rx','ry','rotate','l-a','c-w','x','y'],init:(x,y)=>({preM:[x,y],arguments:[]})},
+const pointArguments: {[key: string]: {label?:string[];limit?:string[];init?:(x:number,y:number)=>{arguments:number[]}}} = {
+  M: {label:['x','y'],init:(x,y)=>({arguments:[x+10,y+10]})},
+  L: {label:['x','y'],init:(x,y)=>({arguments:[x+50,y+50]})},
+  H: {label:['x'],init:(x,y)=>({arguments:[x+50]})},
+  V: {label:['y'],init:(x,y)=>({arguments:[y+50]})},
+  C: {label:['x1','y1','x2','y2','x','y'],init:(x,y)=>({arguments:[x+5,y-10,x+10,y-10,x+15,y]})},
+  S: {label:['x2','y2','x','y'],init:(x,y)=>({arguments:[x+10,y-15,x+20,y]})},
+  Q: {label:['x1','y1','x','y'],init:(x,y)=>({arguments:[x+10,y-15,x+20,y]})},
+  T: {label:['x','y'],init:(x,y)=>({arguments:[x+15,y]})},
+  A: {label:['rx','ry','rotate','l-a','c-w','x','y'],init:(x,y)=>({arguments:[50,50,0,0,1,x+100,y]})},
   Z: {},
 }
 
@@ -75,6 +74,13 @@ class Animate {
   }
 }
 
+function TouchPoint() {
+  return (
+  <div>
+
+  </div>
+  )
+}
 
 function App() {
   useLayoutEffect(()=>{
@@ -82,8 +88,7 @@ function App() {
   },[])
   const [points,setPoints] = useState<Point[]>([{
     type: 'M',
-    arguments: [10, 10],
-    preM: false
+    arguments: [10, 10]
   }])
 
   const [pointActive, setPointActive] = useState<null|number>(null)
@@ -128,7 +133,7 @@ function App() {
   }
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>,pointIndex:number,argumentIndex:number) => {
     const arr = [...points]
-    arr[pointIndex].arguments[argumentIndex] = event.target?.value
+    arr[pointIndex].arguments[argumentIndex] = +event.target?.value
     setPoints(arr)
   }
   const clickPoint = (event: React.MouseEvent,index: number) => {
@@ -142,16 +147,41 @@ function App() {
     }
     console.log(points[index])
   }
+  const getLastM:(index?:number)=>number[] = (index) => {
+    const len = points.length
+    index === undefined && (index = len)
+    if(len||index!==0){
+      const lastPoint = points[index-1]
+      if(lastPoint.type==='H'){
+        return [lastPoint.arguments[0],getLastM(index-1)[1]]
+      }else if (lastPoint.type==='V'){
+        return [getLastM(index-1)[0],lastPoint.arguments[0]]
+      }else {
+        return lastPoint.arguments.slice(-2)
+      }
+    }else {
+      return [0,0]
+    }
+  }
   const appendPoint = () => {
     const arr = [...points]
-    arr.push({type:'M',arguments:[],preM:[]})
-    setUnFold(true)
-    setPoints(arr)    
+    const lastM = getLastM()
+    if(pointArguments['M'].init){
+      const {arguments:args} = pointArguments['M'].init(...(lastM as [number,number]))
+      arr.push({type:'M',arguments:args})
+      setUnFold(true)
+      setPoints(arr)
+    }
   }
   const selectChange = (event: React.MouseEvent, value: any, index: number) => {
     const arr = [...points]
-    arr[index] = {type:value,arguments:[],preM:event.shiftKey?true:[]}
-    setPoints(arr)
+    const lastM = getLastM(index)
+    const point = pointArguments[value]
+    if(point.init){
+      const {arguments:args} = point.init(...(lastM as [number,number]))
+      arr[index] = {type:value,arguments:args}
+      setPoints(arr)
+    }
   }
   const wheelHandle = (event:WheelEvent) => {
     event.preventDefault()
@@ -173,7 +203,13 @@ function App() {
   const canvasRender = () => {
     const ctx = ctxRef.current
     if (ctx) {
-
+      let d=""
+      points.forEach(item=>{
+        d+=item.type+item.arguments.join(' ')
+      })
+      ctx.clearRect(0,0,canvasSize[0],canvasSize[1])
+      ctx.strokeStyle = '#333333'
+      ctx.stroke(new Path2D(d))
     }
   }
   const auxRender = () => {
@@ -185,7 +221,6 @@ function App() {
         const [rx,ry,rotation,l_a_f,s_f,x,y] = active.arguments
         ctx.clearRect(0,0,auxCanvas.width,auxCanvas.height)
         ctx.beginPath()
-        ctx.arc()
         break
       default:
         break
@@ -208,9 +243,16 @@ function App() {
       $main?.removeEventListener('wheel',wheelHandle)
     }
   },[])
+
   useEffect(()=>{
     setUnFold(false)
+    canvasRender()
   }, [points])
+
+  useEffect(()=>{
+
+  }, [pointActive])
+
   useEffect(()=>{
     if(touchRef.current){
       touchRef.current.register({
@@ -240,12 +282,12 @@ function App() {
               <Select className="point-type" unfold={unfold&&index===points.length-1} value={item.type} options={pointType} handleChange={(event,value)=>selectChange(event,value,index)}></Select>
               <div className="point-arguments">
                 {
-                  pointArguments[item.type].map((item$,index$) => (
+                  pointArguments[item.type].label?.map((item$,index$) => (
                     <span className="point-argument" key={item.type+index$}>
                       <label>{item$}</label>
                       <span className="box">
                         <span>{item.arguments[index$]}</span>
-                        <input type="text" value={item.arguments[index$]||''} onChange={event=>handleChange(event,index,index$)} name={`${item.type}:${item$}`}/>
+                        <input type="text" value={item.arguments[index$]} onChange={event=>handleChange(event,index,index$)} name={`${item.type}:${item$}`}/>
                       </span>
                     </span>
                   ))

@@ -74,6 +74,43 @@ class Animate {
   }
 }
 
+function getArcCenter([x1,y1]:[number,number],[x2,y2]:[number,number],a:number,b:number,r:number){
+  const c=Math.cos(r),s=Math.sin(r),d=b**2*c**2+a**2*s**2,e=b**2*s**2+a**2*c**2,
+  A:(x:number,y:number)=>number=(x,y)=>c*x+s*y,
+  B:(x:number,y:number)=>number=(x,y)=>c*y+s*x,
+  f:(x:number,y:number)=>number=(x,y)=>2*B(x,y)*s*a**2-2*A(x,y)*c*b**2,
+  g:(x:number,y:number)=>number=(x,y)=>-2*B(x,y)*c*a**2-2*A(x,y)*s*b**2,
+  h = 2*c*s*b**2-2*c*s*a**2,
+  i:(x:number,y:number)=>number=(x,y)=>a**2*b**2-b**2*A(x,y)**2-a**2*B(x,y)**2,
+  t=2*c*a**2*(B(x1,y1)-B(x2,y2))+2*s*b**2*(A(x1,y1)-A(x2,y2)),
+  j=(b**2*(A(x1,y1)**2-A(x2,y2)**2)+a**2*(B(x1,y1)**2-B(x2,y2)**2)),
+  k=(2*s*a**2*(B(x1,y1)-B(x2,y2))-2*c*b**2*(A(x1,y1)-A(x2,y2)))
+  if(t!==0){
+    const a$ = d+e*k/t**2+k/t*h,
+    b$ = 2*j/t*k/t*e+f(x1,y1)+g(x1,y1)*k/t+j/t*h,
+    c$ = e*j/t**2+g(x1,y1)*j/t-i(x1,y1),
+    m1 = (-b$+(b$**2-4*a$*c$)**0.5)/2/a$,
+    m2 = (-b$-(b$**2-4*a$*c$)**0.5)/2/a$,
+    n1 = j/t+k/t*m1,
+    n2 = j/t+k/t*m2
+    return [[m1,n1],[m2,n2]]
+  }else{
+    const m = -j/k,
+    a$ = e,
+    b$ = g(x1,y1)+h*m,
+    c$ = d*m**2+f(x1,y1)*m-i(x1,y1),
+    n1 = (-b$+(b$**2-4*a$*c$)**0.5)/2/a$,
+    n2 = (-b$-(b$**2-4*a$*c$)**0.5)/2/a$
+    return n1===n2 ? [[m,n1]] : [[m,n1],[m,n2]]
+  }
+
+}
+declare global {
+  interface Window {
+    gc: (...args:any[])=>any
+  }
+}
+window.gc = getArcCenter
 function TouchPoint() {
   return (
   <div>

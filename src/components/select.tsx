@@ -9,7 +9,7 @@ interface SelectProps<T> {
     value: T
     label: string
   }[]
-  handleChange: (...args:any[])=>void
+  handleChange: (...args:any[])=>void|boolean
 }
 
 const Select:<T>({className,unfold,value,options,handleChange}:SelectProps<T>)=>React.FunctionComponentElement<SelectProps<T>> = ({className, unfold,value,options,handleChange})=> {
@@ -21,7 +21,7 @@ const Select:<T>({className,unfold,value,options,handleChange}:SelectProps<T>)=>
     return context.map
   },[options, context.map])
   const optionClick = (event:React.MouseEvent,value:any)=>{
-    handleChange(event, value)
+    if(handleChange(event, value))return
     setSelected(false)
   }
   useEffect(()=>{

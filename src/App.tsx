@@ -7,9 +7,10 @@ import {TouchItem, RegisterType, touchContext} from './components/touch'
 interface Point {
   type: string
   arguments: number[]
+  preM?: [number,number]
 }
 
-const pointArguments: {[key: string]: {label?:string[];limit?:string[];init?:(x:number,y:number)=>{arguments:number[]}}} = {
+const pointArguments: {[key: string]: {label?:string[];limit?:string[];init?:(x:number,y:number)=>{preM?:[number,number];arguments:number[]}}} = {
   M: {label:['x','y'],init:(x,y)=>({arguments:[x+10,y+10]})},
   L: {label:['x','y'],init:(x,y)=>({arguments:[x+50,y+50]})},
   H: {label:['x'],init:(x,y)=>({arguments:[x+50]})},
@@ -18,7 +19,7 @@ const pointArguments: {[key: string]: {label?:string[];limit?:string[];init?:(x:
   S: {label:['x2','y2','x','y'],init:(x,y)=>({arguments:[x+10,y-15,x+20,y]})},
   Q: {label:['x1','y1','x','y'],init:(x,y)=>({arguments:[x+10,y-15,x+20,y]})},
   T: {label:['x','y'],init:(x,y)=>({arguments:[x+15,y]})},
-  A: {label:['rx','ry','rotate','l-a','c-w','x','y'],init:(x,y)=>({arguments:[50,50,0,0,1,x+100,y]})},
+  A: {label:['rx','ry','rotate','l-a','c-w','x','y'],init:(x,y)=>({preM:[x,y],arguments:[50,50,0,0,1,x+100,y]})},
   Z: {},
 }
 
@@ -233,11 +234,17 @@ function App() {
   }
   const selectChange = (event: React.MouseEvent, value: any, index: number) => {
     const arr = [...points]
-    const lastM = getLastM(index)
+    const [x,y] = getLastM(index)
     const point = pointArguments[value]
+    const hasPre = index===0||points[index-1].type!=='M'
+    if(!hasPre&&value==='M')return true
     if(point.init){
-      const {arguments:args} = point.init(...(lastM as [number,number]))
-      arr[index] = {type:value,arguments:args}
+      const {arguments:args,preM} = point.init(hasPre?x+10:x,hasPre?y+10:y)
+      if(preM&&hasPre){
+        arr[index] = {type:value,arguments:args,preM}
+      }else{
+        arr[index] = {type:value,arguments:args}
+      }
       setPoints(arr)
     }
   }
@@ -263,6 +270,7 @@ function App() {
     if (ctx) {
       let d=""
       points.forEach(item=>{
+        item.preM&&(d+='M'+item.preM.join(' '))
         d+=item.type+item.arguments.join(' ')
       })
       ctx.clearRect(0,0,canvasSize[0],canvasSize[1])

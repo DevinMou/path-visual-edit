@@ -105,6 +105,17 @@ function getArcCenter([x1,y1]:[number,number],[x2,y2]:[number,number],a:number,b
   }
 
 }
+
+function getCA([x1,y1]:[number,number],[x2,y2]:[number,number]):number{
+  const s = (x1*y2-x2*y1)/(x1**2+y1**2)
+  const c = x2/x1+s*y1/x1
+  if(c===0){
+   return s>0 ? Math.PI/2 : Math.PI*3/2
+  }else{
+   return Math.atan(s/c)
+  }
+ }
+
 declare global {
   interface Window {
     gc: (...args:any[])=>any
@@ -116,6 +127,16 @@ function TouchPoint() {
   <div>
 
   </div>
+  )
+}
+
+function ArcModel() {
+  return (
+    <div>
+      <div>
+        <span>center:</span>
+      </div>
+    </div>
   )
 }
 

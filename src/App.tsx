@@ -5,8 +5,8 @@ import Select from './components/select'
 import {TouchItem, RegisterType, touchContext} from './components/touch'
 
 interface Point {
-  type: string
-  arguments: number[]
+  type?: string
+  arguments?: number[]
   preM?: [number,number]
 }
 
@@ -146,8 +146,7 @@ function App() {
 
   },[])
   const [points,setPoints] = useState<Point[]>([{
-    type: 'M',
-    arguments: [10, 10]
+    preM: [10,10]
   }])
 
   const [pointActive, setPointActive] = useState<null|number>(null)
@@ -192,7 +191,7 @@ function App() {
   }
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>,pointIndex:number,argumentIndex:number) => {
     const arr = [...points]
-    arr[pointIndex].arguments[argumentIndex] = +event.target?.value
+    arr[pointIndex].arguments![argumentIndex] = +event.target?.value
     setPoints(arr)
   }
   const clickPoint = (event: React.MouseEvent,index: number) => {
@@ -212,11 +211,11 @@ function App() {
     if(len||index!==0){
       const lastPoint = points[index-1]
       if(lastPoint.type==='H'){
-        return [lastPoint.arguments[0],getLastM(index-1)[1]]
+        return [lastPoint.arguments![0],getLastM(index-1)[1]]
       }else if (lastPoint.type==='V'){
-        return [getLastM(index-1)[0],lastPoint.arguments[0]]
+        return [getLastM(index-1)[0],lastPoint.arguments![0]]
       }else {
-        return lastPoint.arguments.slice(-2)
+        return lastPoint.arguments!.slice(-2)
       }
     }else {
       return [0,0]
@@ -271,7 +270,7 @@ function App() {
       let d=""
       points.forEach(item=>{
         item.preM&&(d+='M'+item.preM.join(' '))
-        d+=item.type+item.arguments.join(' ')
+        d+=item.type+item.arguments!.join(' ')
       })
       ctx.clearRect(0,0,canvasSize[0],canvasSize[1])
       ctx.strokeStyle = '#333333'
@@ -343,17 +342,17 @@ function App() {
       <div className="points">
         {
           points.map((item,index)=>(
-            <div className="point" key={index}>
+            <div className={`point${item.type==='M'?' m':''}`} key={index}>
               <div className={`select-area${pointActive===index?' active':''}`} onClick={(event)=>clickPoint(event,index)}></div>
               <Select className="point-type" unfold={unfold&&index===points.length-1} value={item.type} options={pointType} handleChange={(event,value)=>selectChange(event,value,index)}></Select>
               <div className="point-arguments">
                 {
-                  pointArguments[item.type].label?.map((item$,index$) => (
-                    <span className="point-argument" key={item.type+index$}>
+                  pointArguments[item.type!].label?.map((item$,index$) => (
+                    <span className="point-argument" key={item.type!+index$}>
                       <label>{item$}</label>
                       <span className="box">
-                        <span>{item.arguments[index$]}</span>
-                        <input type="text" value={item.arguments[index$]} onChange={event=>handleChange(event,index,index$)} name={`${item.type}:${item$}`}/>
+                        <span>{item.arguments![index$]}</span>
+                        <input type="text" value={item.arguments![index$]} onChange={event=>handleChange(event,index,index$)} name={`${item.type}:${item$}`}/>
                       </span>
                     </span>
                   ))

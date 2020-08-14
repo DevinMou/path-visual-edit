@@ -4,15 +4,16 @@ import './select.scss'
 interface SelectProps<T> {
   className?: string
   unfold?: boolean
-  value:T
+  value?:T
   options:{
     value: T
     label: string
   }[]
   handleChange: (...args:any[])=>void|boolean
+  handleClose?: ()=>void
 }
 
-const Select:<T>({className,unfold,value,options,handleChange}:SelectProps<T>)=>React.FunctionComponentElement<SelectProps<T>> = ({className, unfold,value,options,handleChange})=> {
+const Select:<T>({className,unfold,value,options,handleChange,handleClose}:SelectProps<T>)=>React.FunctionComponentElement<SelectProps<T>> = ({className, unfold,value,options,handleChange,handleClose})=> {
   const context = useRef({map:new Map()}).current
   const [selected,setSelected] = useState(false)
   const dist = useMemo(()=>{
@@ -24,12 +25,16 @@ const Select:<T>({className,unfold,value,options,handleChange}:SelectProps<T>)=>
     if(handleChange(event, value))return
     setSelected(false)
   }
+  const maskClick = ()=>{
+    setSelected(false)
+    handleClose&&handleClose()
+  }
   useEffect(()=>{
     unfold&&setSelected(true)
   },[])
   return (
     <span className={`select${className?' '+className:''}`}>
-      <span className={`select-mask${selected?' active':''}`} onClick={()=>setSelected(false)}></span>
+      <span className={`select-mask${selected?' active':''}`} onClick={maskClick}></span>
       <span className="select-value" onClick={()=>setSelected(true)}>{dist.get(value)}</span>
       <span className={`select-options${selected?' active':''}`}>
         {

@@ -1,7 +1,7 @@
 /* eslint-disable no-extend-native */
 import React, { useState, ChangeEvent, useEffect, useLayoutEffect, useRef } from 'react';
 import './App.scss';
-import Select from './components/select'
+import Point from './components/point'
 import {TouchItem, RegisterType, touchContext} from './components/touch'
 
 interface Point {
@@ -176,7 +176,7 @@ function App() {
 
   const [canvasTransform,setCanvasTransform] = useState<number[]>([0.5,0.5,1,0,0]) // origin,scale,translate
 
-  const [unfold, setUnFold] = useState(false)
+  const [unfold, setUnFold] = useState<number|null>(null)
 
   const [auxCanvas, setAuxCanvas] = useState<{width:number,height:number,show:boolean}>({width:400,height:400,show:false})
 
@@ -246,21 +246,11 @@ function App() {
       return [0,0]
     }
   }
-  const appendPoint = () => {
+  const appendPoint = (index:number) => {
     const arr = [...points]
-    const lastP = arr[arr.length-1]
-    const lastM = getLastM()
-    if(pointArguments['L'].init){
-      const {arguments:args} = pointArguments['L'].init(...(lastM as [number,number]))
-      if(!lastP.type){
-        lastP.type = 'L'
-        lastP.arguments = args
-      }else{
-        arr.push({type:'L',arguments:args})
-      }
-      setUnFold(true)
-      setPoints(arr)
-    }
+    arr.splice(index,0,{})
+    setUnFold(index)
+    setPoints(arr)
   }
   const selectChange = (event: React.MouseEvent, value: any, index: number) => {
     const arr = [...points]
@@ -341,7 +331,7 @@ function App() {
   },[])
 
   useEffect(()=>{
-    setUnFold(false)
+    setUnFold(null)
     canvasRender()
   }, [points])
 
@@ -373,31 +363,10 @@ function App() {
       <div className="points">
         {
           points.map((item,index)=>(
-            <div className="point" key={index}>
-              <div className={`select-area${pointActive===index?' active':''}`} onClick={(event)=>clickPoint(event,index)}></div>
-              <div className={`pre-m`}>
-                {item.preM?(
-                  <>
-                    <span className="point-type">M</span>
-                    <PointArguments type="M" args={item.preM} index={index} isPreM={true} handle={handleChange} pointArguments={pointArguments} />
-                  </>
-                ):(
-                  <div></div>
-                )}
-              </div>
-              {
-                item.type?(
-                  <div className="point-value">
-                    <Select className="point-type" unfold={unfold&&index===points.length-1} value={item.type} options={pointType} handleChange={(event,value)=>selectChange(event,value,index)}></Select>
-                    <PointArguments type={item.type!} args={item.arguments!} index={index} handle={handleChange} pointArguments={pointArguments} />
-                  </div>
-                ):null
-              }
-            </div>
-            
+            <Point key={index} active={pointActive===index} index={index} unfold={unfold===index} data={item} clickPoint={event=>clickPoint(event,index)} selectChange={(event,value)=>selectChange(event,value,index)} appendPoint={appendPoint}/>
           ))
         }
-        <button onClick={appendPoint}>add point</button>
+        <button onClick={()=>appendPoint(points.length)}>add point</button>
       </div>
     </div>
   );

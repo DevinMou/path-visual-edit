@@ -67,7 +67,7 @@ class Animate {
   }
 }
 
-function getArcCenter([x1,y1]:[number,number],[x2,y2]:[number,number],a:number,b:number,r:number){
+function getArcCenter([x1,y1]:[number,number],[x2,y2]:[number,number],a:number,b:number,r:number,laf:number,sf:number){
   const c=Math.cos(r),s=Math.sin(r),d=b**2*c**2+a**2*s**2,e=b**2*s**2+a**2*c**2,
   A:(x:number,y:number)=>number=(x,y)=>c*x+s*y,
   B:(x:number,y:number)=>number=(x,y)=>c*y+s*x,
@@ -78,6 +78,7 @@ function getArcCenter([x1,y1]:[number,number],[x2,y2]:[number,number],a:number,b
   t=2*c*a**2*(B(x1,y1)-B(x2,y2))+2*s*b**2*(A(x1,y1)-A(x2,y2)),
   j=(b**2*(A(x1,y1)**2-A(x2,y2)**2)+a**2*(B(x1,y1)**2-B(x2,y2)**2)),
   k=(2*s*a**2*(B(x1,y1)-B(x2,y2))-2*c*b**2*(A(x1,y1)-A(x2,y2)))
+  let res
   if(t!==0){
     const a$ = d+e*k/t**2+k/t*h,
     b$ = 2*j/t*k/t*e+f(x1,y1)+g(x1,y1)*k/t+j/t*h,
@@ -86,7 +87,7 @@ function getArcCenter([x1,y1]:[number,number],[x2,y2]:[number,number],a:number,b
     m2 = (-b$-(b$**2-4*a$*c$)**0.5)/2/a$,
     n1 = j/t+k/t*m1,
     n2 = j/t+k/t*m2
-    return [[m1,n1],[m2,n2]]
+    res = [[m1,n1],[m2,n2]]
   }else{
     const m = -j/k,
     a$ = e,
@@ -94,19 +95,19 @@ function getArcCenter([x1,y1]:[number,number],[x2,y2]:[number,number],a:number,b
     c$ = d*m**2+f(x1,y1)*m-i(x1,y1),
     n1 = (-b$+(b$**2-4*a$*c$)**0.5)/2/a$,
     n2 = (-b$-(b$**2-4*a$*c$)**0.5)/2/a$
-    return n1===n2 ? [[m,n1]] : [[m,n1],[m,n2]]
+    res = n1===n2 ? [[m,n1]] : [[m,n1],[m,n2]]
   }
-
+  if(res.length>1){
+    const [x,y] = res[0]
+    const la = getCA([x1-x,y-y1],[x2-x,y-y1]) > Math.PI/2 ? 1 : 0
+    return (sf===1?la === laf:la!==laf) ? res[0] : res[1]
+  } else {
+    return res[0]
+  }
 }
 
 function getCA([x1,y1]:[number,number],[x2,y2]:[number,number]):number{
-  const s = (x1*y2-x2*y1)/(x1**2+y1**2)
-  const c = x2/x1+s*y1/x1
-  if(c===0){
-   return s>0 ? Math.PI/2 : Math.PI*3/2
-  }else{
-   return Math.atan(s/c)
-  }
+  return Math.atan2(x1*y2-x2*y1,y1*y2-x1*x2)
  }
 
 declare global {
@@ -160,6 +161,7 @@ function App() {
 
   const ctxRef = useRef<CanvasRenderingContext2D|undefined|null>()
   const auxCtxRef = useRef<CanvasRenderingContext2D|undefined|null>()
+  const arcRef = useRef<{[k:string]:null|number}>({rx:null,ry:null,cx:null,cy:null,rotation:null,x1:null,x2:null,y1:null,y2:null,as:null,ae:null,laf:null,sf:null})
 
   const context = useRef<{wheelAnimate?:Animate,$mainWidth?:number,$mainHeight?:number,origin?:number[],transform:number[]}>({origin:[],transform:[0.5,0.5,1,0,0]}).current
 
@@ -200,17 +202,17 @@ function App() {
     }
     console.log(points[index])
   }
-  const getLastM:(index?:number)=>number[] = (index) => {
+  const getLastM:(index?:number)=>[number,number] = (index) => {
     const len = points.length
     index === undefined && (index = len)
     if(len||index!==0){
       const lastPoint = points[index-1]
       if(lastPoint.type==='H'){
-        return [lastPoint.arguments![0],getLastM(index-1)[1]]
+        return [lastPoint.arguments![0],getLastM(index-1)[1]] as [number,number]
       }else if (lastPoint.type==='V'){
-        return [getLastM(index-1)[0],lastPoint.arguments![0]]
+        return [getLastM(index-1)[0],lastPoint.arguments![0]] as [number,number]
       }else {
-        return lastPoint.arguments!.slice(-2)
+        return lastPoint.arguments!.slice(-2) as [number,number]
       }
     }else {
       return [0,0]
@@ -307,8 +309,17 @@ function App() {
     switch (active.type) {
       case 'A':
         const [rx,ry,rotation,l_a_f,s_f,x,y] = active.arguments
+        if(rx>auxCanvas.width/2){
+          auxCanvas.width = 2*rx
+        }
+        if(ry>auxCanvas.height/2){
+          auxCanvas.height = 2*ry
+        }
         ctx.clearRect(0,0,auxCanvas.width,auxCanvas.height)
         ctx.beginPath()
+        
+        const [cx,cy] = getArcCenter(getLastM(pointActive),[x,y],rx,ry,rotation,l_a_f,s_f)
+        // ctx.ellipse()
         break
       default:
         break
@@ -338,7 +349,7 @@ function App() {
   }, [points,pointActive])
 
   useEffect(()=>{
-
+    auxRender()
   }, [pointActive])
 
   useEffect(()=>{

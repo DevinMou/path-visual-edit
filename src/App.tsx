@@ -1,17 +1,17 @@
 /* eslint-disable no-extend-native */
 import React, { useState, ChangeEvent, useEffect, useLayoutEffect, useRef } from 'react';
 import './App.scss';
-import Point from './components/point'
+import PointC from './components/point'
 import {TouchItem, RegisterType, touchContext} from './components/touch'
 
-interface Point {
+export interface Point {
   type?: string
   arguments?: number[]
   preM?: [number,number]
 }
 
 interface pArguments {
-  [key: string]: {label?:string[];limit?:string[];init?:(x:number,y:number)=>{preM?:[number,number];arguments:number[]}}
+  [key: string]: {label?:string[];limit?:string[];init?:(x:number,y:number)=>{arguments:number[]}}
 }
 
 const pointArguments: pArguments = {
@@ -23,21 +23,9 @@ const pointArguments: pArguments = {
   S: {label:['x2','y2','x','y'],init:(x,y)=>({arguments:[x+10,y-15,x+20,y]})},
   Q: {label:['x1','y1','x','y'],init:(x,y)=>({arguments:[x+10,y-15,x+20,y]})},
   T: {label:['x','y'],init:(x,y)=>({arguments:[x+15,y]})},
-  A: {label:['rx','ry','rotate','l-a','c-w','x','y'],init:(x,y)=>({preM:[x,y],arguments:[50,50,0,0,1,x+100,y]})},
+  A: {label:['rx','ry','rotate','l-a','c-w','x','y'],init:(x,y)=>({arguments:[50,50,0,0,1,x+100,y]})},
   Z: {},
 }
-
-const pointType: {value: any;label: string}[] = [
-  {value:'M',label:'M'},
-  {value:'L',label:'L'},
-  {value:'H',label:'H'},
-  {value:'V',label:'V'},
-  {value:'C',label:'C'},
-  {value:'S',label:'S'},
-  {value:'Q',label:'Q'},
-  {value:'T',label:'T'},
-  {value:'A',label:'A'},
-  {value:'Z',label:'Z'}]
 
 class Animate {
   pool: any[]
@@ -145,23 +133,6 @@ function ArcModel() {
   )
 }
 
-function PointArguments ({type,args,pointArguments,index,handle,isPreM}:{type:string;args:number[];pointArguments:pArguments;index:number;handle:(...args:any[])=>any;isPreM?:boolean}) {
-
-  return  <div className="point-arguments">
-      {
-        pointArguments[type!].label?.map((item$,index$) => (
-          <span className="point-argument" key={type!+index$}>
-            <label>{item$}</label>
-            <span className="box">
-              <span>{args![index$]}</span>
-              <input type="text" value={args![index$]} onChange={event=>handle(event,index,index$,isPreM)} name={`${type}:${item$}`}/>
-            </span>
-          </span>
-        ))
-      }
-    </div>
-}
-
 function App() {
   useLayoutEffect(()=>{
 
@@ -219,8 +190,7 @@ function App() {
     }
     setPoints(arr)
   }
-  const clickPoint = (event: React.MouseEvent,index: number) => {
-    if(event.target!==event.currentTarget) return
+  const clickPoint = (index: number) => {
     if(pointActive!==index){
       setPointActive(index)
 
@@ -253,20 +223,33 @@ function App() {
     setPoints(arr)
   }
   const selectChange = (event: React.MouseEvent, value: any, index: number) => {
-    const arr = [...points]
-    const [x,y] = getLastM(index)
+    const currentPoint = points[index]
+    const hasPreM = currentPoint.hasOwnProperty('preM')
+    const [x,y] = hasPreM&&currentPoint.preM? currentPoint.preM : getLastM(index)
     const point = pointArguments[value]
-    const hasPre = index===0||points[index-1].type!=='M'
-    if(!hasPre&&value==='M')return true
-    if(point.init){
-      const {arguments:args,preM} = point.init(hasPre?x+10:x,hasPre?y+10:y)
-      if(preM&&hasPre){
-        arr[index] = {type:value,arguments:args,preM}
-      }else{
-        arr[index] = {type:value,arguments:args}
+    if(hasPreM){
+      const {arguments:args} = point.init!(x,y)
+      currentPoint.arguments = args
+      currentPoint.type = value
+    }else{
+      if(value==='M'){
+        currentPoint.preM = [x+10,y+10]
       }
-      setPoints(arr)
+      else if (value==='A'){
+        currentPoint.preM = [x+10,y+10]
+        const {arguments:args} = point.init!(x+10,y+10)
+        currentPoint.arguments = args
+        currentPoint.type = value
+      }
+      else{
+        currentPoint.preM = undefined
+        const {arguments:args} = point.init!(x,y)
+        currentPoint.arguments = args
+        currentPoint.type = value
+      }
     }
+    setPoints([...points])
+    clickPoint(index)
   }
   const wheelHandle = (event:WheelEvent) => {
     event.preventDefault()
@@ -289,10 +272,29 @@ function App() {
     const ctx = ctxRef.current
     if (ctx) {
       let d=""
-      points.forEach(item=>{
-        item.preM&&(d+='M'+item.preM.join(' '))
-        item.type&&(d+=item.type+item.arguments!.join(' '))
-      })
+      if(pointActive!==null){
+        // const [x,y] = getLastM(pointActive)
+        const [nx,ny] = getLastM(pointActive+1)
+        points.slice(0,pointActive).forEach(item=>{
+          item.preM&&(d+='M'+item.preM.join(' '))
+          item.type&&(d+=item.type+item.arguments!.join(' '))
+        })
+
+        points.slice(pointActive+1).forEach((item,index)=>{
+          if(index===0){
+            d+='M'
+            d+=item.preM?item.preM.join(' '):(nx+' '+ny)
+          }else{
+            item.preM&&(d+='M'+item.preM.join(' '))
+          }
+          item.type&&(d+=item.type+item.arguments!.join(' '))
+        })
+      }else{
+        points.forEach(item=>{
+          item.preM&&(d+='M'+item.preM.join(' '))
+          item.type&&(d+=item.type+item.arguments!.join(' '))
+        })
+      }
       ctx.clearRect(0,0,canvasSize[0],canvasSize[1])
       ctx.strokeStyle = '#333333'
       ctx.stroke(new Path2D(d))
@@ -333,7 +335,7 @@ function App() {
   useEffect(()=>{
     setUnFold(null)
     canvasRender()
-  }, [points])
+  }, [points,pointActive])
 
   useEffect(()=>{
 
@@ -363,7 +365,7 @@ function App() {
       <div className="points">
         {
           points.map((item,index)=>(
-            <Point key={index} active={pointActive===index} index={index} unfold={unfold===index} data={item} clickPoint={event=>clickPoint(event,index)} selectChange={(event,value)=>selectChange(event,value,index)} appendPoint={appendPoint}/>
+            <PointC key={index} active={pointActive===index} index={index} unfold={unfold===index} data={item} clickPoint={()=>clickPoint(index)} selectChange={(event,value)=>selectChange(event,value,index)} appendPoint={appendPoint} setPoints={setPoints}/>
           ))
         }
         <button onClick={()=>appendPoint(points.length)}>add point</button>

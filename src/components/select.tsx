@@ -35,7 +35,7 @@ const Select:<T>({className,unfold,value,options,handleChange,handleClose}:Selec
   return (
     <span className={`select${className?' '+className:''}`}>
       <span className={`select-mask${selected?' active':''}`} onClick={maskClick}></span>
-      <span className="select-value" onClick={()=>setSelected(true)}>{dist.get(value)}</span>
+      <span className={ value ? "select-value": "select-empty"} onClick={()=>setSelected(true)}>{ value ? dist.get(value) : '+'}</span>
       <span className={`select-options${selected?' active':''}`}>
         {
           options.map((item,index)=><span key={index} className={value===item.value?'active':''} onClick={event=>optionClick(event,item.value)}>{item.label}</span>)

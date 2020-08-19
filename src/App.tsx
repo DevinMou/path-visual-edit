@@ -308,7 +308,7 @@ function App() {
     const ctx = auxCtxRef.current
     switch (active.type) {
       case 'A':
-        const [rx,ry,rotation,l_a_f,s_f,x,y] = active.arguments
+        const [rx,ry,rotation,laf,sf,x,y] = active.arguments
         if(rx>auxCanvas.width/2){
           auxCanvas.width = 2*rx
         }
@@ -317,8 +317,13 @@ function App() {
         }
         ctx.clearRect(0,0,auxCanvas.width,auxCanvas.height)
         ctx.beginPath()
-        
-        const [cx,cy] = getArcCenter(getLastM(pointActive),[x,y],rx,ry,rotation,l_a_f,s_f)
+        const [x1,y1] = getLastM(pointActive)
+        const [cx,cy] = getArcCenter([x1,y1],[x,y],rx,ry,rotation,laf,sf)
+        const as = Math.atan2(cy-y1,cx-x1)-rotation
+        const ae = Math.atan2(cy-y,cx-x)-rotation
+        arcRef.current = {
+          rx,ry,cx,cy,rotation,x1,x2:x,y1,y2:y,as,ae,laf,sf
+        }
         // ctx.ellipse()
         break
       default:

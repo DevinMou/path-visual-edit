@@ -330,6 +330,33 @@ function App() {
         break
     }
   }
+
+  const arcModelMouseHandle =(event:React.MouseEvent,type:string)=>{
+    switch(type){
+      case 'a':
+        break
+      default:
+        break
+    }
+  }
+  const [arcModelData,setArcModelData] = useState({})
+  const getArcModelDetail=()=>{
+    const {rx,ry,cx,cy,rotation,x1,x2,y1,y2,as,ae,laf,sf} = arcRef.current
+    const rotate:(x:number,y:number,r:number)=>[number,number]=(x,y,r)=>{
+      const c = Math.cos(r),s = Math.sin(r)
+      return [x*c+y*s+cx!,y*c-x*s+cy!]
+    }
+    const b = rotate(0,-ry!,rotation!)
+    const r = rotate(0,-ry!-10,rotation!)
+    const a = rotate(rx!,0,rotation!)
+    const start = rotate(-rx!,0,-as!)
+    const end = rotate(rx!,0,ae!)
+    const d = rotate(-rx!-10,0,-as!)
+    const dr = -Math.atan2(cy!-y1!,cx!-x1!)
+    const o = [cx!,cy!]
+
+  }
+
   useEffect(()=>{
     ctxRef.current = canvasRef.current?.getContext('2d')
     auxCtxRef.current = auxRef.current?.getContext('2d')

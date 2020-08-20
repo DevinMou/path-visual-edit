@@ -331,9 +331,30 @@ function App() {
     }
   }
 
-  const arcModelMouseHandle =(event:React.MouseEvent,type:string)=>{
+  const arcModelMouseHandle =(deltaX:number,deltaY:number,type:string)=>{
+    let {rx,ry,cx,cy,rotation,x1,x2,y1,y2,as,ae,laf,sf} = arcRef.current as {[k:string]:number}
+    const {sin,cos,PI} = Math
     switch(type){
-      case 'a':
+      case 'ry':
+        ry += (deltaX*cos(rotation+PI/2)-deltaY*sin(rotation+PI/2))
+        break
+      case 'rx':
+        rx += (deltaX*cos(rotation)-deltaY*sin(rotation))
+        break
+      case 'as':
+        as += getCA([x1-cx,cy-y1],[x1+deltaX,cy-y1-deltaY])
+        break
+      case 'ae':
+        ae += getCA([x1-cx,cy-y1],[x1+deltaX,cy-y1-deltaY])
+        break
+      case 'rotation':
+        const xr = (10+rx)*cos(rotation)
+        const yr = (10+ry)*sin(rotation)
+        rotation += getCA([xr+deltaX,yr-deltaY],[xr,yr])
+        break
+      case 'center':
+        cx += deltaX
+        cy += deltaY
         break
       default:
         break
@@ -341,19 +362,20 @@ function App() {
   }
   const [arcModelData,setArcModelData] = useState({})
   const getArcModelDetail=()=>{
-    const {rx,ry,cx,cy,rotation,x1,x2,y1,y2,as,ae,laf,sf} = arcRef.current
+    const {rx,ry,cx,cy,rotation,x1,x2,y1,y2,as,ae,laf,sf} = arcRef.current as {[k:string]:number}
     const rotate:(x:number,y:number,r:number)=>[number,number]=(x,y,r)=>{
       const c = Math.cos(r),s = Math.sin(r)
-      return [x*c+y*s+cx!,y*c-x*s+cy!]
+      return [x*c+y*s+cx,y*c-x*s+cy]
     }
-    const b = rotate(0,-ry!,rotation!)
-    const r = rotate(0,-ry!-10,rotation!)
-    const a = rotate(rx!,0,rotation!)
-    const start = rotate(-rx!,0,-as!)
-    const end = rotate(rx!,0,ae!)
-    const d = rotate(-rx!-10,0,-as!)
-    const dr = -Math.atan2(cy!-y1!,cx!-x1!)
-    const o = [cx!,cy!]
+    const {sin,cos,PI} = Math
+    const b = rotate(0,-ry,rotation)
+    const r = rotate(0,-ry-10,rotation)
+    const a = rotate(rx,0,rotation)
+    const ps = rotate(rx*cos(PI-as),-ry*sin(PI-as),rotation)
+    const pe = rotate(rx*cos(PI-ae),-ry*sin(PI-ae),rotation)
+    const d = rotate((rx+10)*cos(PI-as),-(ry+10)*sin(PI-as),rotation)
+    const dr = -Math.atan2(cy-ps[1],cx-ps[0])
+    const o = [cx,cy]
 
   }
 
@@ -401,7 +423,15 @@ function App() {
             </div>
           </div>
           <div className="line-model"></div>
-          <div className="arc-model"></div>
+          <div className="arc-model">
+            <span className="control-point" data-name="a0"></span>
+            <span className="control-point" data-name="a1"></span>
+            <span className="control-point" data-name="a2"></span>
+            <span className="control-point" data-name="a3"></span>
+            <span className="control-point" data-name="a4"></span>
+            <span className="control-point" data-name="a5"></span>
+            <span className="control-point" data-name="a6"></span>
+          </div>
           <div className="bezier-model"></div>
         </TouchItem>
       </div>

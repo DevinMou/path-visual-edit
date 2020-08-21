@@ -302,6 +302,14 @@ function App() {
       ctx.stroke(new Path2D(d))
     }
   }
+
+  const arcSvg2Canvas = ({x1,y1,rx,ry,rotation,laf,sf,x,y}:{[k:string]:number}) => {
+    const [cx,cy] = getArcCenter([x1,y1],[x,y],rx,ry,rotation,laf,sf)
+    const as = Math.atan2(cy-y1,cx-x1)-rotation
+    const ae = Math.atan2(cy-y,cx-x)-rotation
+    return {cx,cy,as,ae}
+  }
+
   const auxRender = () => {
     if (pointActive===null||!points[pointActive]||!auxCtxRef.current) return
     const active = points[pointActive]
@@ -318,11 +326,9 @@ function App() {
         ctx.clearRect(0,0,auxCanvas.width,auxCanvas.height)
         ctx.beginPath()
         const [x1,y1] = getLastM(pointActive)
-        const [cx,cy] = getArcCenter([x1,y1],[x,y],rx,ry,rotation,laf,sf)
-        const as = Math.atan2(cy-y1,cx-x1)-rotation
-        const ae = Math.atan2(cy-y,cx-x)-rotation
+        const res = arcSvg2Canvas({x1,y1,rx,ry,rotation,laf,sf,x,y})
         arcRef.current = {
-          rx,ry,cx,cy,rotation,x1,x2:x,y1,y2:y,as,ae,laf,sf
+          rx,ry,rotation,x1,x2:x,y1,y2:y,laf,sf,...res
         }
         // ctx.ellipse()
         break
@@ -359,6 +365,7 @@ function App() {
       default:
         break
     }
+    getArcModelDetail()
   }
   const [arcModelData,setArcModelData] = useState({})
   const getArcModelDetail=()=>{
@@ -368,15 +375,15 @@ function App() {
       return [x*c+y*s+cx,y*c-x*s+cy]
     }
     const {sin,cos,PI} = Math
-    const b = rotate(0,-ry,rotation)
-    const r = rotate(0,-ry-10,rotation)
-    const a = rotate(rx,0,rotation)
+    const pb = rotate(0,-ry,rotation)
+    const pr = rotate(0,-ry-10,rotation)
+    const pa = rotate(rx,0,rotation)
     const ps = rotate(rx*cos(PI-as),-ry*sin(PI-as),rotation)
     const pe = rotate(rx*cos(PI-ae),-ry*sin(PI-ae),rotation)
-    const d = rotate((rx+10)*cos(PI-as),-(ry+10)*sin(PI-as),rotation)
+    const pd = rotate((rx+10)*cos(PI-as),-(ry+10)*sin(PI-as),rotation)
     const dr = -Math.atan2(cy-ps[1],cx-ps[0])
-    const o = [cx,cy]
-
+    const po = [cx,cy]
+    return {pb,pr,pa,ps,pe,pd,dr,po}
   }
 
   useEffect(()=>{

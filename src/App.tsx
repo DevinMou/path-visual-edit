@@ -3,6 +3,7 @@ import React, { useState, ChangeEvent, useEffect, useLayoutEffect, useRef } from
 import './App.scss';
 import PointC from './components/point'
 import {TouchItem, RegisterType, touchContext} from './components/touch'
+import { type } from 'os';
 
 export interface Point {
   type?: string
@@ -68,36 +69,49 @@ class Animate {
 }
 
 function getArcCenter([x1,y1]:[number,number],[x2,y2]:[number,number],a:number,b:number,r:number,laf:number,sf:number){
-  const c=Math.cos(r),s=Math.sin(r),d=b**2*c**2+a**2*s**2,e=b**2*s**2+a**2*c**2,
-  A:(x:number,y:number)=>number=(x,y)=>c*x+s*y,
-  B:(x:number,y:number)=>number=(x,y)=>c*y+s*x,
-  f:(x:number,y:number)=>number=(x,y)=>2*B(x,y)*s*a**2-2*A(x,y)*c*b**2,
-  g:(x:number,y:number)=>number=(x,y)=>-2*B(x,y)*c*a**2-2*A(x,y)*s*b**2,
-  h = 2*c*s*b**2-2*c*s*a**2,
-  i:(x:number,y:number)=>number=(x,y)=>a**2*b**2-b**2*A(x,y)**2-a**2*B(x,y)**2,
-  t=2*c*a**2*(B(x1,y1)-B(x2,y2))+2*s*b**2*(A(x1,y1)-A(x2,y2)),
-  j=(b**2*(A(x1,y1)**2-A(x2,y2)**2)+a**2*(B(x1,y1)**2-B(x2,y2)**2)),
-  k=(2*s*a**2*(B(x1,y1)-B(x2,y2))-2*c*b**2*(A(x1,y1)-A(x2,y2)))
-  let res
-  if(t!==0){
-    const a$ = d+e*k/t**2+k/t*h,
-    b$ = 2*j/t*k/t*e+f(x1,y1)+g(x1,y1)*k/t+j/t*h,
-    c$ = e*j/t**2+g(x1,y1)*j/t-i(x1,y1),
-    m1 = (-b$+(b$**2-4*a$*c$)**0.5)/2/a$,
-    m2 = (-b$-(b$**2-4*a$*c$)**0.5)/2/a$,
-    n1 = j/t+k/t*m1,
-    n2 = j/t+k/t*m2
-    res = [[m1,n1],[m2,n2]]
-  }else{
-    const m = -j/k,
-    a$ = e,
-    b$ = g(x1,y1)+h*m,
-    c$ = d*m**2+f(x1,y1)*m-i(x1,y1),
-    n1 = (-b$+(b$**2-4*a$*c$)**0.5)/2/a$,
-    n2 = (-b$-(b$**2-4*a$*c$)**0.5)/2/a$
-    res = n1===n2 ? [[m,n1]] : [[m,n1],[m,n2]]
-  }
-  if(res.length>1){
+  const s = Math.sin(r),c=Math.cos(r)
+    const A = (x:number,y:number)=>c*x-s*y
+    const B = (x:number,y:number)=>-s*x-c*y
+    const M = (x:number,y:number)=>2*a**2*B(x,y)*s-2*b**2*A(x,y)*c
+    const N = (x:number,y:number)=>2*a**2*B(x,y)*c+2*b**2*A(x,y)*s
+    const L = (x:number,y:number)=>a**2*B(x,y)**2+b**2*A(x,y)**2
+    const n = N(x1,y1)-N(x2,y2)
+    const m = M(x2,y2)-M(x1,y1)
+    const l = L(x2,y2)-L(x1,y1)
+    const d = b**2*c**2+a**2*s**2
+    const f = 2*a**2*B(x1,y1)*s-2*b**2*A(x1,y1)*c
+    const e = b**2*s**2+a**2*c**2
+    const g = 2*a**2*B(x1,y1)*c+2*b**2*A(x1,y1)*s
+    const h = (a**2-b**2)*2*c*s
+    const i = a**2*b**2-b**2*A(x1,y1)**2-a**2*B(x1,y1)**2
+    const eyc = (a$:number,b$:number,c$:number)=>{
+        return [(-b$+(b$**2-4*a$*c$)**0.5)/2/a$,(-b$-(b$**2-4*a$*c$)**0.5)/2/a$]
+    }
+    let res
+    if(n===0){
+       const x = -l/m
+       const a$ = e
+       const b$ = g+h*x
+       const c$ = d*x**2+f*x-i
+       const [y,y$] = eyc(a$,b$,c$)
+       res = [[x,y],[x,y$]]
+    }else if(m===0){
+       const y = l/n
+       const a$ = d
+       const b$ = f+h*y
+       const c$ = e*y**2+g*y-i
+       const [x,x$] = eyc(a$,b$,c$)
+       res = [[x,y],[x$,y]]
+    }else{
+        const a$ = e*m**2/n**2+d+h*m/n
+        const b$ = f+g*m/n+h*l/n+2*e*m*l/n**2
+        const c$ = g*l/n+e*l**2/n**2-i
+        const [x,x$] = eyc(a$,b$,c$)
+        const y = x*m/n+l/n
+        const y$ = x$*m/n+l/n
+        res = [[x,y],[x$,y$]]
+    }
+  if(res[0].join('')!==res[1].join('')){
     const [x,y] = res[0]
     const la = getCA([x1-x,y-y1],[x2-x,y-y1]) > Math.PI/2 ? 1 : 0
     return (sf===1?la === laf:la!==laf) ? res[0] : res[1]
@@ -107,7 +121,7 @@ function getArcCenter([x1,y1]:[number,number],[x2,y2]:[number,number],a:number,b
 }
 
 function getCA([x1,y1]:[number,number],[x2,y2]:[number,number]):number{
-  return Math.atan2(x1*y2-x2*y1,y1*y2-x1*x2)
+  return Math.atan2(x1*y2-x2*y1,y1*y2+x1*x2)
  }
 
 declare global {
@@ -205,7 +219,10 @@ function App() {
   const getLastM:(index?:number)=>[number,number] = (index) => {
     const len = points.length
     index === undefined && (index = len)
-    if(len||index!==0){
+    const nowPoint = points[index]
+    if(nowPoint&&nowPoint.preM){
+      return nowPoint.preM
+    }else if(len||index!==0){
       const lastPoint = points[index-1]
       if(lastPoint.type==='H'){
         return [lastPoint.arguments![0],getLastM(index-1)[1]] as [number,number]
@@ -275,22 +292,25 @@ function App() {
     if (ctx) {
       let d=""
       if(pointActive!==null){
+        console.log(278)
         // const [x,y] = getLastM(pointActive)
-        const [nx,ny] = getLastM(pointActive+1)
         points.slice(0,pointActive).forEach(item=>{
           item.preM&&(d+='M'+item.preM.join(' '))
           item.type&&(d+=item.type+item.arguments!.join(' '))
         })
 
-        points.slice(pointActive+1).forEach((item,index)=>{
-          if(index===0){
-            d+='M'
-            d+=item.preM?item.preM.join(' '):(nx+' '+ny)
-          }else{
-            item.preM&&(d+='M'+item.preM.join(' '))
-          }
-          item.type&&(d+=item.type+item.arguments!.join(' '))
-        })
+        if(pointActive<points.length-1){
+          const [nx,ny] = getLastM(pointActive+1)
+          points.slice(pointActive+1).forEach((item,index)=>{
+            if(index===0){
+              d+='M'
+              d+=item.preM?item.preM.join(' '):(nx+' '+ny)
+            }else{
+              item.preM&&(d+='M'+item.preM.join(' '))
+            }
+            item.type&&(d+=item.type+item.arguments!.join(' '))
+          })
+        }
       }else{
         points.forEach(item=>{
           item.preM&&(d+='M'+item.preM.join(' '))
@@ -305,15 +325,21 @@ function App() {
 
   const arcSvg2Canvas = ({x1,y1,rx,ry,rotation,laf,sf,x,y}:{[k:string]:number}) => {
     const [cx,cy] = getArcCenter([x1,y1],[x,y],rx,ry,rotation,laf,sf)
-    const as = Math.atan2(cy-y1,cx-x1)-rotation
-    const ae = Math.atan2(cy-y,cx-x)-rotation
+    const as = Math.atan2(cy-y1,x1-cx)+rotation
+    const ae = Math.atan2(cy-y,x-cx)+rotation
     return {cx,cy,as,ae}
   }
-
+  const arcRender = ({cx,cy,rx,ry,rotation,as,ae,sf}:{[k:string]:number}) => {
+    const ctx = auxCtxRef.current!
+    ctx.clearRect(0,0,auxCanvas.width,auxCanvas.height)
+    ctx.beginPath()
+    console.log(336,cx,cy,rx,ry,rotation,as,ae,!sf)
+    ctx.ellipse(cx,cy,rx,ry,rotation,as,ae,!sf)
+    ctx.stroke()
+  }
   const auxRender = () => {
-    if (pointActive===null||!points[pointActive]||!auxCtxRef.current) return
-    const active = points[pointActive]
-    const ctx = auxCtxRef.current
+    if(pointActive===null)return
+    const active = points[pointActive!]
     switch (active.type) {
       case 'A':
         const [rx,ry,rotation,laf,sf,x,y] = active.arguments
@@ -323,51 +349,68 @@ function App() {
         if(ry>auxCanvas.height/2){
           auxCanvas.height = 2*ry
         }
-        ctx.clearRect(0,0,auxCanvas.width,auxCanvas.height)
-        ctx.beginPath()
-        const [x1,y1] = getLastM(pointActive)
+        const [x1,y1] = getLastM(pointActive!)
         const res = arcSvg2Canvas({x1,y1,rx,ry,rotation,laf,sf,x,y})
         arcRef.current = {
           rx,ry,rotation,x1,x2:x,y1,y2:y,laf,sf,...res
         }
-        // ctx.ellipse()
+        auxCanvas.show = true
+        setAuxCanvas({...auxCanvas})
+        arcRender({cx:res.cx,cy:res.cy,rx,ry,rotation,as:res.as,ae:res.ae,sf})
+        const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
+        setArcModelData({pb,pr,pa,ps,pe,pd,dr,po})
         break
       default:
         break
     }
   }
+  const auxContext = useRef<{index:null|number;show:boolean;type:string;name:string}>({index:null,show:false,type:'',name:''}).current
 
   const arcModelMouseHandle =(deltaX:number,deltaY:number,type:string)=>{
-    let {rx,ry,cx,cy,rotation,x1,x2,y1,y2,as,ae,laf,sf} = arcRef.current as {[k:string]:number}
+    const arc = arcRef.current as {[k:string]:number}
+    let {rx,ry,cx,cy,rotation,x1,x2,y1,y2,as,ae,laf,sf} = arc
     const {sin,cos,PI} = Math
     switch(type){
-      case 'ry':
-        ry += (deltaX*cos(rotation+PI/2)-deltaY*sin(rotation+PI/2))
+      case 'pb':
+        arc.ry += (deltaX*cos(rotation+PI/2)-deltaY*sin(rotation+PI/2))
         break
-      case 'rx':
-        rx += (deltaX*cos(rotation)-deltaY*sin(rotation))
+      case 'pa':
+        arc.rx += (deltaX*cos(rotation)-deltaY*sin(rotation))
         break
-      case 'as':
-        as += getCA([x1-cx,cy-y1],[x1+deltaX,cy-y1-deltaY])
+      case 'ps':
+        arc.as += getCA([x1-cx,cy-y1],[x1-cx+deltaX,cy-y1-deltaY])
         break
-      case 'ae':
-        ae += getCA([x1-cx,cy-y1],[x1+deltaX,cy-y1-deltaY])
+      case 'pe':
+        arc.ae += getCA([x1-cx,cy-y1],[x1-cx+deltaX,cy-y1-deltaY])
         break
-      case 'rotation':
+      case 'pr':
         const xr = (10+rx)*cos(rotation)
         const yr = (10+ry)*sin(rotation)
-        rotation += getCA([xr+deltaX,yr-deltaY],[xr,yr])
+        const dr = getCA([xr+deltaX,yr-deltaY],[xr,yr])
+        console.log(dr)
+        arc.rotation += dr
         break
-      case 'center':
-        cx += deltaX
-        cy += deltaY
+      case 'po':
+        arc.cx += deltaX
+        arc.cy += deltaY
         break
       default:
         break
     }
-    getArcModelDetail()
+    const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
+    setArcModelData({pb,pr,pa,ps,pe,pd,dr,po})
+    arcRender(arc)
   }
-  const [arcModelData,setArcModelData] = useState({})
+  const [arcModelData,setArcModelData] = useState({
+    pa:[0,0],
+    pb:[0,0],
+    pr:[0,0],
+    ps:[0,0],
+    pe:[0,0],
+    pd:[0,0],
+    po:[0,0],
+    dr:0
+  })
   const getArcModelDetail=()=>{
     const {rx,ry,cx,cy,rotation,x1,x2,y1,y2,as,ae,laf,sf} = arcRef.current as {[k:string]:number}
     const rotate:(x:number,y:number,r:number)=>[number,number]=(x,y,r)=>{
@@ -376,11 +419,11 @@ function App() {
     }
     const {sin,cos,PI} = Math
     const pb = rotate(0,-ry,rotation)
-    const pr = rotate(0,-ry-10,rotation)
+    const pr = rotate(rx+10,0,rotation)
     const pa = rotate(rx,0,rotation)
-    const ps = rotate(rx*cos(PI-as),-ry*sin(PI-as),rotation)
-    const pe = rotate(rx*cos(PI-ae),-ry*sin(PI-ae),rotation)
-    const pd = rotate((rx+10)*cos(PI-as),-(ry+10)*sin(PI-as),rotation)
+    const ps = rotate((rx+5)*cos(as),-(ry+5)*sin(as),rotation)
+    const pe = rotate((rx+5)*cos(ae),-(ry+5)*sin(ae),rotation)
+    const pd = rotate((rx+10)*cos(as),-(ry+10)*sin(as),rotation)
     const dr = -Math.atan2(cy-ps[1],cx-ps[0])
     const po = [cx,cy]
     return {pb,pr,pa,ps,pe,pd,dr,po}
@@ -407,15 +450,29 @@ function App() {
   useEffect(()=>{
     setUnFold(null)
     canvasRender()
+    if(pointActive!==null&&auxCtxRef.current){
+      const active = points[pointActive]
+      if(auxContext.index!==pointActive||auxContext.show!==auxCanvas.show||auxContext.type!==active.type){
+        auxContext.index = pointActive
+        auxContext.show = auxCanvas.show
+        auxContext.type = active.type || ''
+        auxRender()
+      }
+    }
   }, [points,pointActive])
 
-  useEffect(()=>{
-    auxRender()
-  }, [pointActive])
 
   useEffect(()=>{
     if(touchRef.current){
       touchRef.current.register({
+        className: 'control-point',
+        start(pageX,pageY,target){
+          const name = target.dataset['name']
+          name&&(auxContext.name = name)
+        },
+        move(this:touchContext,pageX:number,pageY:number){
+          arcModelMouseHandle(pageX-this.pageX!,pageY-this.pageY!,auxContext.name)
+        }
       })
     }
   },[])
@@ -427,18 +484,18 @@ function App() {
             <div className="canvas" style={{width:canvasSize[0]+'px',height:canvasSize[1]+'px',transformOrigin:`${canvasTransform[0]*100}% ${canvasTransform[1]*100}%`,transform:`translate(${canvasTransform[3]}px,${canvasTransform[4]}px) scale(${canvasTransform[2]})`}}>
               <canvas id="main-canvas" ref={canvasRef} width={canvasSize[0]} height={canvasSize[1]}></canvas>
               <canvas id="aux-canvas" className={auxCanvas.show?'show':''} ref={auxRef} width={auxCanvas.width} height={auxCanvas.height}></canvas>
+              <div className="arc-model" style={{display:auxCanvas.show?'block':'none'}}>
+                <span className="control-point" data-name="pa" style={{transform:`translate(${arcModelData.pa[0]}px,${arcModelData.pa[1]}px)`}}></span>
+                <span className="control-point" data-name="pb" style={{transform:`translate(${arcModelData.pb[0]}px,${arcModelData.pb[1]}px)`}}></span>
+                <span className="control-point" data-name="pr" style={{transform:`translate(${arcModelData.pr[0]}px,${arcModelData.pr[1]}px)`}}></span>
+                <span className="control-point" data-name="ps" style={{transform:`translate(${arcModelData.ps[0]}px,${arcModelData.ps[1]}px)`}}></span>
+                <span className="control-point" data-name="pe" style={{transform:`translate(${arcModelData.pe[0]}px,${arcModelData.pe[1]}px)`}}></span>
+                <span className="control-point" data-name="pd" style={{transform:`translate(${arcModelData.pd[0]}px,${arcModelData.pd[1]}px) rotate(${arcModelData.dr}rad)`}}></span>
+                <span className="control-point" data-name="po" style={{transform:`translate(${arcModelData.po[0]}px,${arcModelData.po[1]}px)`}}></span>
+              </div>
             </div>
           </div>
           <div className="line-model"></div>
-          <div className="arc-model">
-            <span className="control-point" data-name="a0"></span>
-            <span className="control-point" data-name="a1"></span>
-            <span className="control-point" data-name="a2"></span>
-            <span className="control-point" data-name="a3"></span>
-            <span className="control-point" data-name="a4"></span>
-            <span className="control-point" data-name="a5"></span>
-            <span className="control-point" data-name="a6"></span>
-          </div>
           <div className="bezier-model"></div>
         </TouchItem>
       </div>

@@ -3,7 +3,7 @@ import React, { useRef, forwardRef, useImperativeHandle } from 'react';
 interface RegisterOptions {
     id?: string
     className?: string
-    start?: (pageX:number,pageY:number)=>void
+    start?: (pageX:number,pageY:number,target:HTMLElement)=>void
     move?: (pageX:number,pageY:number)=>void
     end?: ()=>void
     click?: [number,()=>void,any[]]
@@ -49,7 +49,7 @@ type touchInstance = {
     combo: number
     lastDate: null | number
 } & {
-    [key: string]: (pageX: number,pageY: number)=>void
+    [key: string]: (pageX: number,pageY: number, target?: HTMLElement)=>void
 }
 
 export const FeedBack = forwardRef<RegisterType,{children:any;className: string;style?: React.CSSProperties}>(({children,className:parentClass,style},ref) => {
@@ -142,7 +142,7 @@ export const FeedBack = forwardRef<RegisterType,{children:any;className: string;
             touch.events.lastDate = nowDate
             _this.touch = touch
             if (events.start) {
-            events.start.call(touch,pageX,pageY)
+            events.start.call(touch,pageX,pageY,_target)
             // events.start.bind(touch)(pageX, pageY)
             }
             if (events.press) {

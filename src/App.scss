@@ -23,6 +23,31 @@
           left: 0;
           top: 0;
         }
+        .arc-model {
+          position: absolute;
+          left: 0;
+          top: 0;
+          .control-point {
+            width: 8px;
+            height: 8px;
+            position: absolute;
+            left: -4px;
+            top: -4px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            &::after {
+              content: '';
+              width: 2px;
+              height: 2px;
+              display: block;
+              border-radius: 50%;
+              background-color: #000000;
+            }
+          }
+        }
       }
     }
   }

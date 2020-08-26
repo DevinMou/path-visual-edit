@@ -177,7 +177,7 @@ function App() {
   const auxCtxRef = useRef<CanvasRenderingContext2D|undefined|null>()
   const arcRef = useRef<{[k:string]:null|number}>({rx:null,ry:null,cx:null,cy:null,rotation:null,x1:null,x2:null,y1:null,y2:null,as:null,ae:null,laf:null,sf:null})
 
-  const context = useRef<{wheelAnimate?:Animate,$mainWidth?:number,$mainHeight?:number,origin?:number[],transform:number[]}>({origin:[],transform:[0.5,0.5,1,0,0]}).current
+  const context = useRef<{wheelAnimate?:Animate,translateAnimate?:Animate,$mainWidth?:number,$mainHeight?:number,origin?:number[],transform:number[]}>({origin:[],transform:[0.5,0.5,1,0,0]}).current
 
   const getNewTransform = (x:number,y:number)=>{
     const [cw,ch] = canvasSize,sw = context.$mainWidth||0,sh = context.$mainHeight||0,[ox,oy,s,dx,dy]=context.transform
@@ -196,6 +196,7 @@ function App() {
   } 
   if(!context.wheelAnimate){
     context.wheelAnimate = new Animate(wheel,true)
+    context.translateAnimate = new Animate(wheel,true)
   }
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>,pointIndex:number,argumentIndex:number,isPreM?:boolean) => {
     const arr = [...points]
@@ -366,6 +367,10 @@ function App() {
   }
   const auxContext = useRef<{index:null|number;show:boolean;type:string;name:string}>({index:null,show:false,type:'',name:''}).current
 
+  const arcModelRender = ([arc,model]:[{[k:string]:number},{dr:number;[k:string]:number[]}])=>{
+    setArcModelData(model)
+    arcRender(arc)
+  }
   const arcModelMouseHandle =(deltaX:number,deltaY:number,type:string)=>{
     const arc = arcRef.current as {[k:string]:number}
     let {rx,ry,cx,cy,rotation,x1,x2,y1,y2,as,ae,laf,sf} = arc
@@ -398,6 +403,7 @@ function App() {
         break
     }
     const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
+
     setArcModelData({pb,pr,pa,ps,pe,pd,dr,po})
     arcRender(arc)
   }
@@ -418,12 +424,12 @@ function App() {
       return [x*c+y*s+cx,y*c-x*s+cy]
     }
     const {sin,cos,PI} = Math
-    const pb = rotate(0,-ry,rotation)
-    const pr = rotate(rx+10,0,rotation)
-    const pa = rotate(rx,0,rotation)
-    const ps = rotate((rx+5)*cos(as),-(ry+5)*sin(as),rotation)
-    const pe = rotate((rx+5)*cos(ae),-(ry+5)*sin(ae),rotation)
-    const pd = rotate((rx+10)*cos(as),-(ry+10)*sin(as),rotation)
+    const pb = rotate(0,-ry,-rotation)
+    const pr = rotate(rx+10,0,-rotation)
+    const pa = rotate(rx,0,-rotation)
+    const ps = rotate((rx+5)*cos(-as),-(ry+5)*sin(-as),-rotation)
+    const pe = rotate((rx+5)*cos(-ae),-(ry+5)*sin(-ae),-rotation)
+    const pd = rotate((rx+10)*cos(-as),-(ry+10)*sin(-as),-rotation)
     const dr = -Math.atan2(cy-ps[1],cx-ps[0])
     const po = [cx,cy]
     return {pb,pr,pa,ps,pe,pd,dr,po}

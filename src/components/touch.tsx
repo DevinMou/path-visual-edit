@@ -110,7 +110,7 @@ export const FeedBack = forwardRef<RegisterType,{children:any;className: string;
         }
       }
     const startHandle = function (event:React.MouseEvent) {
-        if (_this.lock||!Object.keys(_this.hub).length) {
+        if (_this.lock||!Object.keys(_this.hub).length||_this.touch.status!==undefined) {
           return
         }
         event.preventDefault()

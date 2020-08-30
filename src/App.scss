@@ -47,6 +47,33 @@
               background-color: #000000;
             }
           }
+          &.direction {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            width: 12px;
+            left: -6px;
+            height: 6px;
+            top: -3px;
+            border-radius: 3px;
+            background: #eeeeee;
+            box-shadow: 0 0 1px 0 rgba(0,0,0,.1);
+            overflow: hidden;
+            justify-content: flex-start;
+            &.reverse {
+              justify-content: flex-end;
+            }
+            &::after {
+              content: '';
+              display: block;
+              width: 4px;
+              height: 4px;
+              border-radius: 50%;
+              margin: 0 1px;
+              background: #54a0e4;
+            }
+          }
         }
       }
     }

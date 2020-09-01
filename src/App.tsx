@@ -205,7 +205,10 @@ function App() {
       context.onModel = true
       setPoints(points => {
         const point = points![context.active!]
-        const {x1,y1,x2,y2,rx,ry,rotation,laf,sf} = arcRef.current as {[k:string]:number}
+        const {x1,y1,x2,y2,rx,ry,rotation,sf,cx,cy} = arcRef.current as {[k:string]:number}
+        const A = getCA([x1-cx,cy-y1],[x2-cx,cy-y2]) > 0 
+        const laf = sf ? +A : +!A
+        arcRef.current.laf = laf
         point.preM = [x1,y1]
         point.arguments = [rx,ry,rotation/Math.PI*180,laf,sf,x2,y2]
         return [...points]
@@ -395,17 +398,25 @@ function App() {
     const arc = arcRef.current as {[k:string]:number}
     // const deltaX:number = (pageX - preX)/transform[2],deltaY:number = (pageY - preY)/transform[2]
     const [relativeX,relativeY] = getRelativeSite(transform,pageX,pageY)
-    let {rx,ry,cx,cy,rotation} = arc
+    let {rx,ry,cx,cy,rotation,sf} = arc
     const vx = relativeX - cx
     const vy = relativeY - cy
     const sin = Math.sin(rotation)
     const cos = Math.cos(rotation)
     switch(type){
       case 'pb':
-        arc.ry = (vx*sin-vy*cos)
+        let _ry = (vx*sin-vy*cos)*(sf?1:-1)
+        if (_ry < 0) {
+          _ry = 0
+        }
+        arc.ry = _ry
         break
       case 'pa':
-        arc.rx = (vx*cos+vy*sin)
+        let _rx = (vx*cos+vy*sin)
+        if (_rx < 0) {
+          _rx = 0
+        }
+        arc.rx = _rx
         break
       case 'ps':
         arc.as = Math.atan2((vy*cos-vx*sin)*rx,(vx*cos+vy*sin)*ry)
@@ -443,7 +454,7 @@ function App() {
       return [x*c+y*s+cx,y*c-x*s+cy]
     }
     const {sin,cos} = Math
-    const pb = rotate(0,-ry,-rotation)
+    const pb = rotate(0,sf ? -ry : ry,-rotation)
     const pr = rotate(rx+10,0,-rotation)
     const pa = rotate(rx,0,-rotation)
     const ps = rotate((rx+5)*cos(-as),-(ry+5)*sin(-as),-rotation)
@@ -490,6 +501,7 @@ function App() {
     }
     setUnFold(null)
     canvasRender()
+    // Todo
     if(pointActive!==null&&auxCtxRef.current){
       const active = points[pointActive]
       if(auxContext.index!==pointActive||auxContext.show!==auxCanvas.show||auxContext.type!==active.type){
@@ -498,6 +510,8 @@ function App() {
         auxContext.type = active.type || ''
         auxRender()
       }
+    }else if (auxCanvas.show) {
+      setAuxCanvas({...auxCanvas, show: false})
     }
   }, [points,pointActive])
   useEffect(()=>{
@@ -523,7 +537,10 @@ function App() {
         className: 'direction',
         click: [1, ()=>{
           context.onModel = true
-          //Todo:
+          const arc = arcRef.current as {[k:string]:number}
+          arc.sf = +!arc.sf
+          const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
+          context.translateAnimate?.push([arc,{pb,pr,pa,ps,pe,pd,dr,po}])
         },[]]
       })
     }

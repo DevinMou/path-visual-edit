@@ -1,5 +1,5 @@
 /* eslint-disable no-extend-native */
-import React, { useState, ChangeEvent, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './App.scss';
 import PointC from './components/point'
 import {TouchItem, RegisterType, touchContext} from './components/touch'
@@ -16,6 +16,16 @@ interface pArguments {
 
 type AMT = 'pb'|'pr'|'pa'|'ps'|'pe'|'pd'|'po'|'dr'
 
+interface ContextType {
+  wheelAnimate?:Animate
+  translateAnimate?:Animate
+  $mainWidth?:number
+  $mainHeight?:number
+  origin?:number[]
+  transform:number[]
+  onModel?:boolean
+  active?:number
+}
 
 const pointArguments: pArguments = {
   M: {label:['x','y'],init:(x,y)=>({arguments:[x+10,y+10]})},
@@ -140,16 +150,6 @@ function TouchPoint() {
   )
 }
 
-function ArcModel() {
-  return (
-    <div>
-      <div>
-        <span>center:</span>
-      </div>
-    </div>
-  )
-}
-
 function App() {
   const [points,setPoints] = useState<Point[]>([{
     preM: [10,10]
@@ -163,7 +163,7 @@ function App() {
 
   const [unfold, setUnFold] = useState<number|null>(null)
 
-  const auxContext = useRef<{index:null|number;show:boolean;type:string;name:string}>({index:null,show:false,type:'',name:''}).current
+  const auxContext = useRef<{index:null|number;show:boolean;type:string;name:string;model:string}>({index:null,show:false,type:'',name:'',model:''}).current
 
   const [auxCanvas, setAuxCanvas] = useState<{width:number,height:number}>({width:400,height:400})
 
@@ -183,7 +183,7 @@ function App() {
   const auxCtxRef = useRef<CanvasRenderingContext2D|undefined|null>()
   const arcRef = useRef<{[k:string]:null|number}>({rx:null,ry:null,cx:null,cy:null,rotation:null,x1:null,x2:null,y1:null,y2:null,as:null,ae:null,laf:null,sf:null})
 
-  const context = useRef<{wheelAnimate?:Animate;translateAnimate?:Animate;$mainWidth?:number;$mainHeight?:number;origin?:number[];transform:number[];onModel?:boolean;active?:number}>({origin:[],transform:[0.5,0.5,1,0,0]}).current
+  const context = useRef<ContextType>({origin:[],transform:[0.5,0.5,1,0,0]}).current
 
   const getNewTransform = (x:number,y:number)=>{
     const [cw,ch] = canvasSize,sw = context.$mainWidth||0,sh = context.$mainHeight||0,[ox,oy,s,dx,dy]=context.transform
@@ -435,6 +435,16 @@ function App() {
     const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
     context.translateAnimate?.push([arc,{pb,pr,pa,ps,pe,pd,dr,po}])
   }
+
+  const modelMouseHandle = (pageX: number, preX: number, pageY:number,preY:number,type:string, model: string)=>{
+    const [relativeX,relativeY] = getRelativeSite(context.transform,pageX,pageY)
+    if (model === 'arc') {
+
+    } else if (model === 'line') {
+
+    } else if (model === 'bezier') {}
+  }
+
   const [arcModelData,setArcModelData] = useState({
     pa:[0,0],
     pb:[0,0],
@@ -446,7 +456,7 @@ function App() {
     dr:0
   })
   const getArcModelDetail=()=>{
-    const {rx,ry,cx,cy,rotation,as,ae,laf,sf} = arcRef.current as {[k:string]:number}
+    const {rx,ry,cx,cy,rotation,as,ae,sf} = arcRef.current as {[k:string]:number}
     const rotate:(x:number,y:number,r:number)=>[number,number]=(x,y,r)=>{
       const c = cos(r),s = sin(r)
       return [x*c+y*s+cx,y*c-x*s+cy]
@@ -519,13 +529,12 @@ function App() {
         className: 'control-point',
         start(pageX,pageY,target){
           const name = target.dataset['name']
-          name&&(auxContext.name = name)
+          auxContext.name = name || ''
+          const model = target.dataset['model']
+          auxContext.model = model || ''
         },
         move(this:touchContext,pageX:number,pageY:number){
-          setCanvasTransform(transform=>{
-            arcModelMouseHandle(pageX,this.pageX!,pageY,this.pageY!,auxContext.name, transform)
-            return transform
-          })
+          arcModelMouseHandle(pageX,this.pageX!,pageY,this.pageY!,auxContext.name, context.transform)
         }
       })
       touchRef.current.register({
@@ -549,13 +558,13 @@ function App() {
               <canvas id="main-canvas" ref={canvasRef} width={canvasSize[0]} height={canvasSize[1]}></canvas>
               <canvas id="aux-canvas" className={pointActive!==null?'show':''} ref={auxRef} width={auxCanvas.width} height={auxCanvas.height}></canvas>
               <div className="arc-model" style={{display:pointActive!==null && auxData?.type === 'A'?'block':'none'}}>
-                <span className="control-point" data-name="pa" style={{transform:`translate(${arcModelData.pa[0]}px,${arcModelData.pa[1]}px)`}}></span>
-                <span className="control-point" data-name="pb" style={{transform:`translate(${arcModelData.pb[0]}px,${arcModelData.pb[1]}px)`}}></span>
-                <span className="control-point" data-name="pr" style={{transform:`translate(${arcModelData.pr[0]}px,${arcModelData.pr[1]}px)`}}></span>
-                <span className="control-point" data-name="ps" style={{transform:`translate(${arcModelData.ps[0]}px,${arcModelData.ps[1]}px)`}}></span>
-                <span className="control-point" data-name="pe" style={{transform:`translate(${arcModelData.pe[0]}px,${arcModelData.pe[1]}px)`}}></span>
-                <span className={`direction${arcRef.current.sf ?'':' reverse'}`} data-name="pd" style={{transform:`translate(${arcModelData.pd[0]}px,${arcModelData.pd[1]}px) rotate(${arcModelData.dr}rad)`}}></span>
-                <span className="control-point" data-name="po" style={{transform:`translate(${arcModelData.po[0]}px,${arcModelData.po[1]}px)`}}></span>
+                <span className="control-point" data-name="pa" data-model="arc" style={{transform:`translate(${arcModelData.pa[0]}px,${arcModelData.pa[1]}px)`}}></span>
+                <span className="control-point" data-name="pb" data-model="arc" style={{transform:`translate(${arcModelData.pb[0]}px,${arcModelData.pb[1]}px)`}}></span>
+                <span className="control-point" data-name="pr" data-model="arc" style={{transform:`translate(${arcModelData.pr[0]}px,${arcModelData.pr[1]}px)`}}></span>
+                <span className="control-point" data-name="ps" data-model="arc" style={{transform:`translate(${arcModelData.ps[0]}px,${arcModelData.ps[1]}px)`}}></span>
+                <span className="control-point" data-name="pe" data-model="arc" style={{transform:`translate(${arcModelData.pe[0]}px,${arcModelData.pe[1]}px)`}}></span>
+                <span className={`direction${arcRef.current.sf ?'':' reverse'}`} data-name="pd" data-model="arc" style={{transform:`translate(${arcModelData.pd[0]}px,${arcModelData.pd[1]}px) rotate(${arcModelData.dr}rad)`}}></span>
+                <span className="control-point" data-name="po" data-model="arc" style={{transform:`translate(${arcModelData.po[0]}px,${arcModelData.po[1]}px)`}}></span>
               </div>
               <div className="line-model" style={{display:pointActive!==null && ['L','H','V'].includes(auxData?.type!) ? 'block':'none'}}></div>
               <div className="bezier-model" style={{display:pointActive!==null && ['C','S','Q','T'].includes(auxData?.type!) ? 'block':'none'}}></div>

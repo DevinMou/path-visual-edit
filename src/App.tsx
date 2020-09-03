@@ -1,9 +1,8 @@
 /* eslint-disable no-extend-native */
-import React, { useState, ChangeEvent, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, ChangeEvent, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import './App.scss';
 import PointC from './components/point'
 import {TouchItem, RegisterType, touchContext} from './components/touch'
-import { type } from 'os';
 
 export interface Point {
   type?: string
@@ -152,9 +151,6 @@ function ArcModel() {
 }
 
 function App() {
-  useLayoutEffect(()=>{
-
-  },[])
   const [points,setPoints] = useState<Point[]>([{
     preM: [10,10]
   }])
@@ -167,7 +163,11 @@ function App() {
 
   const [unfold, setUnFold] = useState<number|null>(null)
 
-  const [auxCanvas, setAuxCanvas] = useState<{width:number,height:number,show:boolean}>({width:400,height:400,show:false})
+  const auxContext = useRef<{index:null|number;show:boolean;type:string;name:string}>({index:null,show:false,type:'',name:''}).current
+
+  const [auxCanvas, setAuxCanvas] = useState<{width:number,height:number}>({width:400,height:400})
+
+  const auxData = useMemo(()=>pointActive === null ? null : points[pointActive], [points, pointActive])
 
   const touchRef = useRef<RegisterType>(null)
 
@@ -377,7 +377,6 @@ function App() {
         arcRef.current = {
           rx,ry,rotation,x1,x2:x,y1,y2:y,laf,sf,...res
         }
-        auxCanvas.show = true
         setAuxCanvas({...auxCanvas})
         const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
         arcModelRender([{cx:res.cx,cy:res.cy,rx,ry,rotation,as:res.as,ae:res.ae,sf},{pb,pr,pa,ps,pe,pd,dr,po}], true)
@@ -386,7 +385,6 @@ function App() {
         break
     }
   }
-  const auxContext = useRef<{index:null|number;show:boolean;type:string;name:string}>({index:null,show:false,type:'',name:''}).current
 
   const getRelativeSite = (transform:number[],pageX:number,pageY:number) => {
     const [ox,oy,r,tx,ty] = transform
@@ -504,14 +502,11 @@ function App() {
     // Todo
     if(pointActive!==null&&auxCtxRef.current){
       const active = points[pointActive]
-      if(auxContext.index!==pointActive||auxContext.show!==auxCanvas.show||auxContext.type!==active.type){
+      if(auxContext.index!==pointActive||auxContext.type!==active.type){
         auxContext.index = pointActive
-        auxContext.show = auxCanvas.show
         auxContext.type = active.type || ''
         auxRender()
       }
-    }else if (auxCanvas.show) {
-      setAuxCanvas({...auxCanvas, show: false})
     }
   }, [points,pointActive])
   useEffect(()=>{
@@ -552,8 +547,8 @@ function App() {
           <div className="board">
             <div className="canvas" ref={canvasBoardRef} style={{width:canvasSize[0]+'px',height:canvasSize[1]+'px',transformOrigin:`${canvasTransform[0]*100}% ${canvasTransform[1]*100}%`,transform:`translate(${canvasTransform[3]}px,${canvasTransform[4]}px) scale(${canvasTransform[2]})`}}>
               <canvas id="main-canvas" ref={canvasRef} width={canvasSize[0]} height={canvasSize[1]}></canvas>
-              <canvas id="aux-canvas" className={auxCanvas.show?'show':''} ref={auxRef} width={auxCanvas.width} height={auxCanvas.height}></canvas>
-              <div className="arc-model" style={{display:auxCanvas.show?'block':'none'}}>
+              <canvas id="aux-canvas" className={pointActive!==null?'show':''} ref={auxRef} width={auxCanvas.width} height={auxCanvas.height}></canvas>
+              <div className="arc-model" style={{display:pointActive!==null && auxData?.type === 'A'?'block':'none'}}>
                 <span className="control-point" data-name="pa" style={{transform:`translate(${arcModelData.pa[0]}px,${arcModelData.pa[1]}px)`}}></span>
                 <span className="control-point" data-name="pb" style={{transform:`translate(${arcModelData.pb[0]}px,${arcModelData.pb[1]}px)`}}></span>
                 <span className="control-point" data-name="pr" style={{transform:`translate(${arcModelData.pr[0]}px,${arcModelData.pr[1]}px)`}}></span>
@@ -562,10 +557,10 @@ function App() {
                 <span className={`direction${arcRef.current.sf ?'':' reverse'}`} data-name="pd" style={{transform:`translate(${arcModelData.pd[0]}px,${arcModelData.pd[1]}px) rotate(${arcModelData.dr}rad)`}}></span>
                 <span className="control-point" data-name="po" style={{transform:`translate(${arcModelData.po[0]}px,${arcModelData.po[1]}px)`}}></span>
               </div>
+              <div className="line-model" style={{display:pointActive!==null && ['L','H','V'].includes(auxData?.type!) ? 'block':'none'}}></div>
+              <div className="bezier-model" style={{display:pointActive!==null && ['C','S','Q','T'].includes(auxData?.type!) ? 'block':'none'}}></div>
             </div>
           </div>
-          <div className="line-model"></div>
-          <div className="bezier-model"></div>
         </TouchItem>
       </div>
       <div className="points">

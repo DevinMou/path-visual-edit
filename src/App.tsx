@@ -182,6 +182,8 @@ function App() {
   const ctxRef = useRef<CanvasRenderingContext2D|undefined|null>()
   const auxCtxRef = useRef<CanvasRenderingContext2D|undefined|null>()
   const arcRef = useRef<{[k:string]:null|number}>({rx:null,ry:null,cx:null,cy:null,rotation:null,x1:null,x2:null,y1:null,y2:null,as:null,ae:null,laf:null,sf:null})
+  const lineRef = useRef<{[k:string]:null|number}>({mx:null,my:null,lx:null,ly:null,hx:null,vy:null})
+  const bezierRef = useRef<{[k:string]:null|number}>({mx:null,my:null,x1:null,x2:null,y1:null,y2:null,x:null,y:null})
 
   const context = useRef<ContextType>({origin:[],transform:[0.5,0.5,1,0,0]}).current
 
@@ -199,27 +201,40 @@ function App() {
 
   const wheel = (payload:any[any])=> {
     setCanvasTransform([...payload[1]])
-  } 
-  const arcModelRender = ([arc,model]:[{[k:string]:number},{[k in AMT]:k extends 'dr' ? number : number[]}], noAnimate?:boolean)=>{
+  }
+  
+  type ArcType = ['arc',{[k:string]:number},{[k in AMT]:k extends 'dr' ? number : number[]}]
+  type LineType = ['line',{[k:string]:number},{[k:string]:number[]}]
+
+
+  const auxModelRender = ([type,arc,model]:ArcType | LineType, noAnimate?:boolean)=>{
     if(!noAnimate){
       context.onModel = true
       setPoints(points => {
         const point = points![context.active!]
-        const {x1,y1,x2,y2,rx,ry,rotation,sf,cx,cy} = arcRef.current as {[k:string]:number}
-        const A = getCA([x1-cx,cy-y1],[x2-cx,cy-y2]) > 0 
-        const laf = sf ? +A : +!A
-        arcRef.current.laf = laf
-        point.preM = [x1,y1]
-        point.arguments = [rx,ry,rotation/Math.PI*180,laf,sf,x2,y2]
+        if (type === 'arc') {
+          const {x1,y1,x2,y2,rx,ry,rotation,sf,cx,cy} = arcRef.current as {[k:string]:number}
+          const A = getCA([x1-cx,cy-y1],[x2-cx,cy-y2]) > 0 
+          const laf = sf ? +A : +!A
+          arcRef.current.laf = laf
+          point.preM = [x1,y1]
+          point.arguments = [rx,ry,rotation/Math.PI*180,laf,sf,x2,y2]
+        } else if (type === 'line') {}
+
         return [...points]
       })
     }
-    setArcModelData(model)
-    arcRender(arc)
+    switch (type) {
+      case 'arc':
+        setArcModelData(model as ArcType[2])
+        arcRender(arc as ArcType[1])
+        break
+    }
+    
   }
   if(!context.wheelAnimate){
     context.wheelAnimate = new Animate(wheel,true)
-    context.translateAnimate = new Animate(arcModelRender,true)
+    context.translateAnimate = new Animate(auxModelRender,true)
   }
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>,pointIndex:number,argumentIndex:number,isPreM?:boolean) => {
     const arr = [...points]
@@ -363,26 +378,25 @@ function App() {
   const auxRender = () => {
     if(pointActive===null)return
     const active = points[pointActive!]
-    switch (active.type) {
-      case 'A':
-        const [rx,ry,rotation,laf,sf,x,y] = active.arguments
-        if(rx>auxCanvas.width/2){
-          auxCanvas.width = 2*rx
-        }
-        if(ry>auxCanvas.height/2){
-          auxCanvas.height = 2*ry
-        }
-        const [x1,y1] = getLastM(pointActive!)
-        const res = arcSvg2Canvas({x1,y1,rx,ry,rotation,laf,sf,x,y})
-        arcRef.current = {
-          rx,ry,rotation,x1,x2:x,y1,y2:y,laf,sf,...res
-        }
-        setAuxCanvas({...auxCanvas})
-        const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
-        arcModelRender([{cx:res.cx,cy:res.cy,rx,ry,rotation,as:res.as,ae:res.ae,sf},{pb,pr,pa,ps,pe,pd,dr,po}], true)
-        break
-      default:
-        break
+    if (active.type === 'A') {
+      const [rx,ry,rotation,laf,sf,x,y] = active.arguments
+      if(rx>auxCanvas.width/2){
+        auxCanvas.width = 2*rx
+      }
+      if(ry>auxCanvas.height/2){
+        auxCanvas.height = 2*ry
+      }
+      const [x1,y1] = getLastM(pointActive!)
+      const res = arcSvg2Canvas({x1,y1,rx,ry,rotation,laf,sf,x,y})
+      arcRef.current = {
+        rx,ry,rotation,x1,x2:x,y1,y2:y,laf,sf,...res
+      }
+      setAuxCanvas({...auxCanvas})
+      const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
+      auxModelRender(['arc',{cx:res.cx,cy:res.cy,rx,ry,rotation,as:res.as,ae:res.ae,sf},{pb,pr,pa,ps,pe,pd,dr,po}], true)
+    } else if (['L','H','V'].includes(active.type!)) {
+      const [x1,y1] = getLastM(pointActive!)
+      // T
     }
   }
 
@@ -392,10 +406,10 @@ function App() {
     const top = rectRef.current[1] + canvasSize[1]*oy*(1-r) + ty
     return [(pageX - left)/r,(pageY - top)/r]
   }
-  const arcModelMouseHandle =(pageX: number, preX: number, pageY:number,preY:number,type:string,transform:number[])=>{
-    const arc = arcRef.current as {[k:string]:number}
+  const arcModelMouseHandle =(pageX: number, preX: number, pageY:number,preY:number,type:string)=>{
     // const deltaX:number = (pageX - preX)/transform[2],deltaY:number = (pageY - preY)/transform[2]
-    const [relativeX,relativeY] = getRelativeSite(transform,pageX,pageY)
+    const [relativeX,relativeY] = getRelativeSite(context.transform,pageX,pageY)
+    const arc = arcRef.current as {[k:string]:number}
     let {rx,ry,cx,cy,rotation,sf} = arc
     const vx = relativeX - cx
     const vy = relativeY - cy
@@ -434,6 +448,31 @@ function App() {
     }
     const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
     context.translateAnimate?.push([arc,{pb,pr,pa,ps,pe,pd,dr,po}])
+  }
+
+  const lineModelMouseHandle = (pageX: number, preX: number, pageY:number,preY:number,type:string) => {
+    const [relativeX,relativeY] = getRelativeSite(context.transform,pageX,pageY)
+    const line = lineRef.current as {[k:string]:number}
+    switch(type){
+      case 'lm':
+        line.mx = relativeX
+        line.my = relativeY
+        break
+      case 'lp':
+        line.lx = relativeX
+        line.ly = relativeY
+        break
+      case 'lh':
+        line.hx = relativeX
+        break
+      case 'lv':
+        line.vy = relativeY
+        break
+      default:
+        break
+    }
+    // const {pb,pr,pa,ps,pe,pd,dr,po} = getLineModelDetail()
+    // context.translateAnimate?.push([arc,{pb,pr,pa,ps,pe,pd,dr,po}])
   }
 
   const modelMouseHandle = (pageX: number, preX: number, pageY:number,preY:number,type:string, model: string)=>{
@@ -477,6 +516,15 @@ function App() {
     const dr = -Math.atan2(ry**2*(rx*cos(-as)),rx**2*(-ry*sin(-as)))+rotation
     const po = [cx,cy]
     return {pb,pr,pa,ps,pe,pd,dr,po}
+  }
+
+  const getLineModelDetail=()=>{
+    const {mx,my,lx,ly,hx,vy} = lineRef.current as {[k:string]:number}
+    const pm = [mx,my]
+    const pl = [lx,ly]
+    const ph = [hx,my]
+    const pv = [mx,vy]
+    return {pm,pl,ph,pv}
   }
 
   useEffect(()=>{
@@ -534,7 +582,9 @@ function App() {
           auxContext.model = model || ''
         },
         move(this:touchContext,pageX:number,pageY:number){
-          arcModelMouseHandle(pageX,this.pageX!,pageY,this.pageY!,auxContext.name, context.transform)
+          if (auxContext.model === 'arc') {
+            arcModelMouseHandle(pageX,this.pageX!,pageY,this.pageY!,auxContext.name)
+          }
         }
       })
       touchRef.current.register({

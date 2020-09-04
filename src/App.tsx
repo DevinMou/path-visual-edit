@@ -15,7 +15,7 @@ interface pArguments {
 }
 
 type AMT = 'pb'|'pr'|'pa'|'ps'|'pe'|'pd'|'po'|'dr'
-
+type LMT = 'pm'|'pl'|'ph'|'pv' 
 interface ContextType {
   wheelAnimate?:Animate
   translateAnimate?:Animate
@@ -204,31 +204,49 @@ function App() {
   }
   
   type ArcType = ['arc',{[k:string]:number},{[k in AMT]:k extends 'dr' ? number : number[]}]
-  type LineType = ['line',{[k:string]:number},{[k:string]:number[]}]
+  type LineType = ['line',{[k:string]:number},{[k in LMT]?:number[]}]
 
 
-  const auxModelRender = ([type,arc,model]:ArcType | LineType, noAnimate?:boolean)=>{
+  const auxModelRender = ([type,auxcontext,model]:ArcType | LineType, noAnimate?:boolean)=>{
     if(!noAnimate){
       context.onModel = true
       setPoints(points => {
         const point = points![context.active!]
+        const [mx,my] = getLastM(context.active)
         if (type === 'arc') {
           const {x1,y1,x2,y2,rx,ry,rotation,sf,cx,cy} = arcRef.current as {[k:string]:number}
           const A = getCA([x1-cx,cy-y1],[x2-cx,cy-y2]) > 0 
           const laf = sf ? +A : +!A
           arcRef.current.laf = laf
-          point.preM = [x1,y1]
+          if (mx!==x1||my!==y1){
+            point.preM = [x1,y1]
+          } else {
+            point.preM = undefined
+          }
           point.arguments = [rx,ry,rotation/Math.PI*180,laf,sf,x2,y2]
-        } else if (type === 'line') {}
-
+        } else if (type === 'line') {
+          const {x1,y1,lx,ly,hx,vy} = auxcontext
+          if (mx!==x1||my!==y1){
+            point.preM = [x1,y1]
+          } else {
+            point.preM = undefined
+          }
+          point.arguments = [lx,ly,hx,vy].filter(item=>item!==undefined)
+        }
         return [...points]
       })
     }
     switch (type) {
       case 'arc':
         setArcModelData(model as ArcType[2])
-        arcRender(arc as ArcType[1])
-        break
+        arcRender(auxcontext as ArcType[1])
+      break
+      case 'line':
+        setLineModelData(model as LineType[2])
+        const {x1,y1,lx,ly,hx,vy} = auxcontext
+        const linecontext = lx !== undefined ? [x1,y1,lx,ly] : hx !== undefined ? [x1,y1,hx,y1] : [x1,y1,x1,vy]
+        lineRender(linecontext)
+      break
     }
     
   }
@@ -375,27 +393,55 @@ function App() {
     ctx.ellipse(cx,cy,rx,ry,rotation,as,ae,!sf)
     ctx.stroke()
   }
+
+  const lineRender = ([x1,y1,x,y]:number[]) => {
+    const ctx = auxCtxRef.current!
+    ctx.clearRect(0,0,auxCanvas.width,auxCanvas.height)
+    ctx.beginPath()
+    ctx.moveTo(x1,y1)
+    ctx.lineTo(x,y)
+    ctx.stroke()
+  }
+
   const auxRender = () => {
     if(pointActive===null)return
     const active = points[pointActive!]
     if (active.type === 'A') {
       const [rx,ry,rotation,laf,sf,x,y] = active.arguments
-      if(rx>auxCanvas.width/2){
+      /* if(rx>auxCanvas.width/2){
         auxCanvas.width = 2*rx
       }
       if(ry>auxCanvas.height/2){
         auxCanvas.height = 2*ry
-      }
+      } */
       const [x1,y1] = getLastM(pointActive!)
       const res = arcSvg2Canvas({x1,y1,rx,ry,rotation,laf,sf,x,y})
       arcRef.current = {
         rx,ry,rotation,x1,x2:x,y1,y2:y,laf,sf,...res
       }
-      setAuxCanvas({...auxCanvas})
+      // setAuxCanvas({...auxCanvas})
       const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
       auxModelRender(['arc',{cx:res.cx,cy:res.cy,rx,ry,rotation,as:res.as,ae:res.ae,sf},{pb,pr,pa,ps,pe,pd,dr,po}], true)
     } else if (['L','H','V'].includes(active.type!)) {
       const [x1,y1] = getLastM(pointActive!)
+      let {lx,ly,hx,vy} = lineRef.current
+      let line = {}
+      switch (active.type) {
+        case 'L':
+          [lx,ly] = active.arguments
+          line = {x1,y1,lx,ly}
+        break
+        case 'H':
+          [hx] = active.arguments
+          line = {x1,y1,hx}
+        break
+        case 'V':
+          [vy] = active.arguments
+          line = {x1,y1,vy}
+        break
+      }
+      lineRef.current = {...line}
+      auxModelRender(['line',line,getLineModelDetail()], true)
       // T
     }
   }
@@ -483,7 +529,6 @@ function App() {
 
     } else if (model === 'bezier') {}
   }
-
   const [arcModelData,setArcModelData] = useState({
     pa:[0,0],
     pb:[0,0],
@@ -494,6 +539,16 @@ function App() {
     po:[0,0],
     dr:0
   })
+
+  type LineModelType = {[k in LMT]?:number[]}
+
+  const [lineModelData,setLineModelData] = useState<LineModelType>({
+    pm:[0,0],
+    pl:[0,0],
+    ph:[0,0],
+    pv:[0,0]
+  })
+
   const getArcModelDetail=()=>{
     const {rx,ry,cx,cy,rotation,as,ae,sf} = arcRef.current as {[k:string]:number}
     const rotate:(x:number,y:number,r:number)=>[number,number]=(x,y,r)=>{
@@ -518,13 +573,13 @@ function App() {
     return {pb,pr,pa,ps,pe,pd,dr,po}
   }
 
-  const getLineModelDetail=()=>{
+  const getLineModelDetail:()=>LineModelType=()=>{
     const {mx,my,lx,ly,hx,vy} = lineRef.current as {[k:string]:number}
     const pm = [mx,my]
-    const pl = [lx,ly]
-    const ph = [hx,my]
-    const pv = [mx,vy]
-    return {pm,pl,ph,pv}
+    const pl = lx === undefined ? undefined : [lx,ly]
+    const ph = hx === undefined ? undefined : [hx,my]
+    const pv = vy === undefined ? undefined : [mx,vy]
+    return {pm,pl,ph,pv} as LineModelType
   }
 
   useEffect(()=>{
@@ -616,7 +671,12 @@ function App() {
                 <span className={`direction${arcRef.current.sf ?'':' reverse'}`} data-name="pd" data-model="arc" style={{transform:`translate(${arcModelData.pd[0]}px,${arcModelData.pd[1]}px) rotate(${arcModelData.dr}rad)`}}></span>
                 <span className="control-point" data-name="po" data-model="arc" style={{transform:`translate(${arcModelData.po[0]}px,${arcModelData.po[1]}px)`}}></span>
               </div>
-              <div className="line-model" style={{display:pointActive!==null && ['L','H','V'].includes(auxData?.type!) ? 'block':'none'}}></div>
+              <div className="line-model" style={{display:pointActive!==null && ['L','H','V'].includes(auxData?.type!) ? 'block':'none'}}>
+                <span className="control-point" data-name="pm" data-model="line" style={{transform:`translate(${lineModelData.pa[0]}px,${arcModelData.pa[1]}px)`}}></span>
+                <span className="control-point" data-name="pb" data-model="arc" style={{transform:`translate(${arcModelData.pb[0]}px,${arcModelData.pb[1]}px)`}}></span>
+                <span className="control-point" data-name="pr" data-model="arc" style={{transform:`translate(${arcModelData.pr[0]}px,${arcModelData.pr[1]}px)`}}></span>
+                <span className="control-point" data-name="ps" data-model="arc" style={{transform:`translate(${arcModelData.ps[0]}px,${arcModelData.ps[1]}px)`}}></span>
+              </div>
               <div className="bezier-model" style={{display:pointActive!==null && ['C','S','Q','T'].includes(auxData?.type!) ? 'block':'none'}}></div>
             </div>
           </div>

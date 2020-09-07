@@ -81,7 +81,7 @@ class Animate {
 }
 
 function getArcCenter([x1,y1]:[number,number],[x2,y2]:[number,number],a:number,b:number,r:number,laf:number,sf:number){
-  const s = Math.sin(r),c=Math.cos(r)
+  const s = Math.sin(-r),c=Math.cos(-r)
     const A = (x:number,y:number)=>c*x-s*y
     const B = (x:number,y:number)=>-s*x-c*y
     const M = (x:number,y:number)=>2*a**2*B(x,y)*s-2*b**2*A(x,y)*c
@@ -243,8 +243,8 @@ function App() {
       break
       case 'line':
         setLineModelData(model as LineType[2])
-        const {x1,y1,lx,ly,hx,vy} = auxcontext
-        const linecontext = lx !== undefined ? [x1,y1,lx,ly] : hx !== undefined ? [x1,y1,hx,y1] : [x1,y1,x1,vy]
+        const {mx,my,lx,ly,hx,vy} = auxcontext
+        const linecontext = lx !== undefined ? [mx,my,lx,ly] : hx !== undefined ? [mx,my,hx,my] : [mx,my,mx,vy]
         lineRender(linecontext)
       break
     }
@@ -382,8 +382,12 @@ function App() {
 
   const arcSvg2Canvas = ({x1,y1,rx,ry,rotation,laf,sf,x,y}:{[k:string]:number}) => {
     const [cx,cy] = getArcCenter([x1,y1],[x,y],rx,ry,rotation,laf,sf)
-    const as = -Math.atan2(cy-y1,x1-cx) + rotation
-    const ae = -Math.atan2(cy-y,x-cx) + rotation
+    // const as = -Math.atan2(cy-y1,x1-cx) + rotation
+    // const ae = -Math.atan2(cy-y,x-cx) + rotation
+    const sin = Math.sin(rotation)
+    const cos = Math.cos(rotation)
+    const as = Math.atan2(((y1-cy)*cos-(x1-cx)*sin)*rx,((x1-cx)*cos+(y1-cy)*sin)*ry)
+    const ae = Math.atan2(((y-cy)*cos-(x-cx)*sin)*rx,((x-cx)*cos+(y-cy)*sin)*ry)
     return {cx,cy,as,ae}
   }
   const arcRender = ({cx,cy,rx,ry,rotation,as,ae,sf}:{[k:string]:number}) => {
@@ -424,21 +428,21 @@ function App() {
       const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
       auxModelRender(['arc',{cx:res.cx,cy:res.cy,rx,ry,rotation,as:res.as,ae:res.ae,sf},{pb,pr,pa,ps,pe,pd,dr,po}], true)
     } else if (['L','H','V'].includes(active.type!)) {
-      const [x1,y1] = getLastM(pointActive!)
+      const [mx,my] = getLastM(pointActive!)
       let {lx,ly,hx,vy} = lineRef.current
       let line = {}
       switch (active.type) {
         case 'L':
           [lx,ly] = active.arguments
-          line = {x1,y1,lx,ly}
+          line = {mx,my,lx,ly}
         break
         case 'H':
           [hx] = active.arguments
-          line = {x1,y1,hx}
+          line = {mx,my,hx}
         break
         case 'V':
           [vy] = active.arguments
-          line = {x1,y1,vy}
+          line = {mx,my,vy}
         break
       }
       lineRef.current = {...line}
@@ -501,18 +505,18 @@ function App() {
     const [relativeX,relativeY] = getRelativeSite(context.transform,pageX,pageY)
     const line = lineRef.current as {[k:string]:number}
     switch(type){
-      case 'lm':
+      case 'pm':
         line.mx = relativeX
         line.my = relativeY
         break
-      case 'lp':
+      case 'pl':
         line.lx = relativeX
         line.ly = relativeY
         break
-      case 'lh':
+      case 'ph':
         line.hx = relativeX
         break
-      case 'lv':
+      case 'pv':
         line.vy = relativeY
         break
       default:
@@ -640,6 +644,8 @@ function App() {
         move(this:touchContext,pageX:number,pageY:number){
           if (auxContext.model === 'arc') {
             arcModelMouseHandle(pageX,this.pageX!,pageY,this.pageY!,auxContext.name)
+          } else if (auxContext.model === 'line') {
+            lineModelMouseHandle(pageX,this.pageX!,pageY,this.pageY!,auxContext.name)
           }
         }
       })
@@ -650,7 +656,7 @@ function App() {
           const arc = arcRef.current as {[k:string]:number}
           arc.sf = +!arc.sf
           const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
-          context.translateAnimate?.push([arc,{pb,pr,pa,ps,pe,pd,dr,po}])
+          context.translateAnimate?.push(['arc',arc,{pb,pr,pa,ps,pe,pd,dr,po}])
         },[]]
       })
     }

@@ -27,56 +27,58 @@
             display: block;
           }
         }
-        .arc-model {
+        .arc-model,.line-model {
           position: absolute;
           left: 0;
           top: 0;
-          .control-point {
-            width: 8px;
-            height: 8px;
-            position: absolute;
-            left: -4px;
-            top: -4px;
+          width: 100%;
+          height: 100%;
+        }
+        .control-point {
+          width: 8px;
+          height: 8px;
+          position: absolute;
+          left: -4px;
+          top: -4px;
+          border-radius: 50%;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          cursor: pointer;
+          &::after {
+            content: '';
+            width: 2px;
+            height: 2px;
+            display: block;
             border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            &::after {
-              content: '';
-              width: 2px;
-              height: 2px;
-              display: block;
-              border-radius: 50%;
-              background-color: #000000;
-            }
+            background-color: #000000;
           }
-          .direction {
-            position: absolute;
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            width: 12px;
-            left: -6px;
-            height: 6px;
-            top: -3px;
-            border-radius: 3px;
-            background: #eeeeee;
-            box-shadow: 0 0 1px 0 rgba(0,0,0,.1);
-            overflow: hidden;
-            justify-content: flex-start;
-            &.reverse {
-              justify-content: flex-end;
-            }
-            &::after {
-              content: '';
-              display: block;
-              width: 4px;
-              height: 4px;
-              border-radius: 50%;
-              margin: 0 1px;
-              background: #54a0e4;
-            }
+        }
+        .direction {
+          position: absolute;
+          display: flex;
+          align-items: center;
+          cursor: pointer;
+          width: 12px;
+          left: -6px;
+          height: 6px;
+          top: -3px;
+          border-radius: 3px;
+          background: #eeeeee;
+          box-shadow: 0 0 1px 0 rgba(0,0,0,.1);
+          overflow: hidden;
+          justify-content: flex-start;
+          &.reverse {
+            justify-content: flex-end;
+          }
+          &::after {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            margin: 0 1px;
+            background: #54a0e4;
           }
         }
       }

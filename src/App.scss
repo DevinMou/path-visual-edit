@@ -22,6 +22,10 @@
           position: absolute;
           left: 0;
           top: 0;
+          display: none;
+          &.show {
+            display: block;
+          }
         }
         .arc-model {
           position: absolute;

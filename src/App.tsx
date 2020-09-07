@@ -123,13 +123,15 @@ function getArcCenter([x1,y1]:[number,number],[x2,y2]:[number,number],a:number,b
         const y$ = x$*m/n+l/n
         res = [[x,y],[x$,y$]]
     }
+  let center
   if(res[0].join('')!==res[1].join('')){
     const [x,y] = res[0]
-    const la = getCA([x1-x,y-y1],[x2-x,y-y1]) > Math.PI/2 ? 1 : 0
-    return (sf===1?la === laf:la!==laf) ? res[0] : res[1]
+    const la = getCA([x1-x,y-y1],[x2-x,y-y2]) > Math.PI/2 ? 1 : 0
+    center = (sf===1?la === laf:la!==laf) ? res[0] : res[1]
   } else {
-    return res[0]
+    center = res[0]
   }
+  return center.map(item => +item.toFixed(7))
 }
 
 function getCA([x1,y1]:[number,number],[x2,y2]:[number,number]):number{
@@ -142,11 +144,9 @@ declare global {
   }
 }
 window.gc = getArcCenter
-function TouchPoint() {
+function TouchPoint({name,model,data}:{name:string;model:string;data?:number[]|null}) {
   return (
-  <div>
-
-  </div>
+    <span className="control-point" data-name={name} data-model={model} style={{transform:data ? `translate(${data[0]}px,${data[1]}px)`:'unset',display:data?'flex':'none'}}></span>
   )
 }
 
@@ -382,8 +382,8 @@ function App() {
 
   const arcSvg2Canvas = ({x1,y1,rx,ry,rotation,laf,sf,x,y}:{[k:string]:number}) => {
     const [cx,cy] = getArcCenter([x1,y1],[x,y],rx,ry,rotation,laf,sf)
-    const as = Math.atan2(cy-y1,x1-cx)+rotation
-    const ae = Math.atan2(cy-y,x-cx)+rotation
+    const as = -Math.atan2(cy-y1,x1-cx) + rotation
+    const ae = -Math.atan2(cy-y,x-cx) + rotation
     return {cx,cy,as,ae}
   }
   const arcRender = ({cx,cy,rx,ry,rotation,as,ae,sf}:{[k:string]:number}) => {
@@ -407,7 +407,8 @@ function App() {
     if(pointActive===null)return
     const active = points[pointActive!]
     if (active.type === 'A') {
-      const [rx,ry,rotation,laf,sf,x,y] = active.arguments
+      const [rx,ry,_rotation,laf,sf,x,y] = active.arguments
+      const rotation = _rotation*Math.PI/180
       /* if(rx>auxCanvas.width/2){
         auxCanvas.width = 2*rx
       }
@@ -493,7 +494,7 @@ function App() {
         break
     }
     const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
-    context.translateAnimate?.push([arc,{pb,pr,pa,ps,pe,pd,dr,po}])
+    context.translateAnimate?.push(['arc',arc,{pb,pr,pa,ps,pe,pd,dr,po}])
   }
 
   const lineModelMouseHandle = (pageX: number, preX: number, pageY:number,preY:number,type:string) => {
@@ -663,19 +664,21 @@ function App() {
               <canvas id="main-canvas" ref={canvasRef} width={canvasSize[0]} height={canvasSize[1]}></canvas>
               <canvas id="aux-canvas" className={pointActive!==null?'show':''} ref={auxRef} width={auxCanvas.width} height={auxCanvas.height}></canvas>
               <div className="arc-model" style={{display:pointActive!==null && auxData?.type === 'A'?'block':'none'}}>
-                <span className="control-point" data-name="pa" data-model="arc" style={{transform:`translate(${arcModelData.pa[0]}px,${arcModelData.pa[1]}px)`}}></span>
-                <span className="control-point" data-name="pb" data-model="arc" style={{transform:`translate(${arcModelData.pb[0]}px,${arcModelData.pb[1]}px)`}}></span>
-                <span className="control-point" data-name="pr" data-model="arc" style={{transform:`translate(${arcModelData.pr[0]}px,${arcModelData.pr[1]}px)`}}></span>
-                <span className="control-point" data-name="ps" data-model="arc" style={{transform:`translate(${arcModelData.ps[0]}px,${arcModelData.ps[1]}px)`}}></span>
-                <span className="control-point" data-name="pe" data-model="arc" style={{transform:`translate(${arcModelData.pe[0]}px,${arcModelData.pe[1]}px)`}}></span>
-                <span className={`direction${arcRef.current.sf ?'':' reverse'}`} data-name="pd" data-model="arc" style={{transform:`translate(${arcModelData.pd[0]}px,${arcModelData.pd[1]}px) rotate(${arcModelData.dr}rad)`}}></span>
-                <span className="control-point" data-name="po" data-model="arc" style={{transform:`translate(${arcModelData.po[0]}px,${arcModelData.po[1]}px)`}}></span>
+                {
+                  Object.entries(arcModelData).map(([name, val])=>(
+                    name === 'dr' ? null :
+                    name === 'pd' ? (
+                      <span className={`direction${arcRef.current.sf ?'':' reverse'}`} data-name="pd" data-model="arc" style={{transform:`translate(${arcModelData.pd[0]}px,${arcModelData.pd[1]}px) rotate(${arcModelData.dr}rad)`}} key="pd"></span>
+                    ) : <TouchPoint name={name} model="arc" data={val as number[]}  key={name}></TouchPoint>
+                  ))
+                }
               </div>
               <div className="line-model" style={{display:pointActive!==null && ['L','H','V'].includes(auxData?.type!) ? 'block':'none'}}>
-                <span className="control-point" data-name="pm" data-model="line" style={{transform:`translate(${lineModelData.pa[0]}px,${arcModelData.pa[1]}px)`}}></span>
-                <span className="control-point" data-name="pb" data-model="arc" style={{transform:`translate(${arcModelData.pb[0]}px,${arcModelData.pb[1]}px)`}}></span>
-                <span className="control-point" data-name="pr" data-model="arc" style={{transform:`translate(${arcModelData.pr[0]}px,${arcModelData.pr[1]}px)`}}></span>
-                <span className="control-point" data-name="ps" data-model="arc" style={{transform:`translate(${arcModelData.ps[0]}px,${arcModelData.ps[1]}px)`}}></span>
+                {
+                  Object.entries(lineModelData).map(([name, val])=>(
+                    <TouchPoint name={name} model="arc" data={val as number[]}  key={name}></TouchPoint>
+                  ))
+                }
               </div>
               <div className="bezier-model" style={{display:pointActive!==null && ['C','S','Q','T'].includes(auxData?.type!) ? 'block':'none'}}></div>
             </div>

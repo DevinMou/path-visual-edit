@@ -25,6 +25,7 @@ interface ContextType {
   transform:number[]
   onModel?:boolean
   active?:number
+  points?:Point[]
 }
 
 const pointArguments: pArguments = {
@@ -274,6 +275,7 @@ function App() {
     console.log(points[index])
   }
   const getLastM:(index?:number)=>[number,number] = (index) => {
+    const points = context.points!
     const len = points.length
     index === undefined && (index = len)
     const nowPoint = points[index]
@@ -632,7 +634,9 @@ function App() {
   useEffect(()=>{
     pointActive!==null&&(context.active = pointActive)
   },[pointActive])
-
+  useEffect(()=>{
+    context.points = points
+  },[points])
   useEffect(()=>{
     if(touchRef.current){
       touchRef.current.register({

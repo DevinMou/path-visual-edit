@@ -218,15 +218,15 @@ function App() {
           const A = getCA([x1-cx,cy-y1],[x2-cx,cy-y2]) > 0 
           const laf = sf ? +A : +!A
           arcRef.current.laf = laf
-          if (mx!==x1||my!==y1){
+          if (mx!==x1||my!==y1||context.active===0){
             point.preM = [x1,y1]
           } else {
             point.preM = undefined
           }
           point.arguments = [rx,ry,rotation/Math.PI*180,laf,sf,x2,y2]
         } else if (type === 'line') {
-          const {x1,y1,lx,ly,hx,vy} = auxcontext
-          if (mx!==x1||my!==y1){
+          const {mx:x1,my:y1,lx,ly,hx,vy} = auxcontext
+          if (mx!==x1||my!==y1||context.active===0){
             point.preM = [x1,y1]
           } else {
             point.preM = undefined
@@ -522,8 +522,10 @@ function App() {
       default:
         break
     }
-    // const {pb,pr,pa,ps,pe,pd,dr,po} = getLineModelDetail()
-    // context.translateAnimate?.push([arc,{pb,pr,pa,ps,pe,pd,dr,po}])
+    const {pm,pl,ph,pv} = getLineModelDetail()
+    const res = {pm} as LineModelType
+    pl ? res.pl = pl : ph ? res.ph = ph : res.pv = pv
+    context.translateAnimate?.push(['line',line,res])
   }
 
   const modelMouseHandle = (pageX: number, preX: number, pageY:number,preY:number,type:string, model: string)=>{
@@ -682,7 +684,7 @@ function App() {
               <div className="line-model" style={{display:pointActive!==null && ['L','H','V'].includes(auxData?.type!) ? 'block':'none'}}>
                 {
                   Object.entries(lineModelData).map(([name, val])=>(
-                    <TouchPoint name={name} model="arc" data={val as number[]}  key={name}></TouchPoint>
+                    <TouchPoint name={name} model="line" data={val as number[]}  key={name}></TouchPoint>
                   ))
                 }
               </div>

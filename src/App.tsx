@@ -207,6 +207,17 @@ function App() {
   type ArcType = ['arc',{[k:string]:number},{[k in AMT]:k extends 'dr' ? number : number[]}]
   type LineType = ['line',{[k:string]:number},{[k in LMT]?:number[]}]
 
+  const getLineEndPoint = (M:[number,number],point:Point,ctx:LineType[1]) => {
+    const {mx,my,lx,ly,hx,vy} = ctx
+    switch (point.type) {
+      case 'L':
+        return [[...point.arguments],[lx,ly]]
+      case 'H':
+        return [[point.arguments![0],M[1]],[hx,my]]
+      case 'V':
+        return [[M[0],point.arguments![0]],[mx,vy]]
+    }
+  }
 
   const auxModelRender = ([type,auxcontext,model]:ArcType | LineType, noAnimate?:boolean)=>{
     if(!noAnimate){
@@ -226,7 +237,7 @@ function App() {
             point.preM = undefined
           }
           if (nextPoint && !nextPoint.preM && !(point.arguments![5] === x2 && point.arguments![6] === y2)){
-            //t
+            nextPoint.preM = [point.arguments![5],point.arguments![6]]
           }
           point.arguments = [rx,ry,rotation/Math.PI*180,laf,sf,x2,y2]
         } else if (type === 'line') {
@@ -235,6 +246,10 @@ function App() {
             point.preM = [x1,y1]
           } else {
             point.preM = undefined
+          }
+          const [[ox,oy],[nx,ny]] = getLineEndPoint([mx,my],point,auxcontext)
+          if (nextPoint && !nextPoint.preM && !(ox===nx&&oy===ny)){
+            nextPoint.preM = [ox,oy]
           }
           point.arguments = [lx,ly,hx,vy].filter(item=>item!==undefined)
         }

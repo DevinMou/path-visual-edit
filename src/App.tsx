@@ -213,6 +213,7 @@ function App() {
       context.onModel = true
       setPoints(points => {
         const point = points![context.active!]
+        const nextPoint = context.active === points.length ? null : points[context.active! + 1]
         const [mx,my] = getLastM(context.active)
         if (type === 'arc') {
           const {x1,y1,x2,y2,rx,ry,rotation,sf,cx,cy} = arcRef.current as {[k:string]:number}
@@ -223,6 +224,9 @@ function App() {
             point.preM = [x1,y1]
           } else {
             point.preM = undefined
+          }
+          if (nextPoint && !nextPoint.preM && !(point.arguments![5] === x2 && point.arguments![6] === y2)){
+            //t
           }
           point.arguments = [rx,ry,rotation/Math.PI*180,laf,sf,x2,y2]
         } else if (type === 'line') {

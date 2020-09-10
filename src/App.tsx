@@ -228,13 +228,12 @@ function App() {
         const [mx,my] = getLastM(context.active)
         if (type === 'arc') {
           const {x1,y1,x2,y2,rx,ry,rotation,sf,cx,cy} = arcRef.current as {[k:string]:number}
+          // T
           const A = getCA([x1-cx,cy-y1],[x2-cx,cy-y2]) > 0 
           const laf = sf ? +A : +!A
           arcRef.current.laf = laf
-          if (mx!==x1||my!==y1||context.active===0){
+          if (!point.preM && (mx!==x1||my!==y1||context.active===0)){
             point.preM = [x1,y1]
-          } else {
-            point.preM = undefined
           }
           if (nextPoint && !nextPoint.preM && !(point.arguments![5] === x2 && point.arguments![6] === y2)){
             nextPoint.preM = [point.arguments![5],point.arguments![6]]
@@ -242,10 +241,8 @@ function App() {
           point.arguments = [rx,ry,rotation/Math.PI*180,laf,sf,x2,y2]
         } else if (type === 'line') {
           const {mx:x1,my:y1,lx,ly,hx,vy} = auxcontext
-          if (mx!==x1||my!==y1||context.active===0){
+          if (!point.preM && (mx!==x1||my!==y1||context.active===0)){
             point.preM = [x1,y1]
-          } else {
-            point.preM = undefined
           }
           const [[ox,oy],[nx,ny]] = getLineEndPoint([mx,my],point,auxcontext)
           if (nextPoint && !nextPoint.preM && !(ox===nx&&oy===ny)){
@@ -468,7 +465,6 @@ function App() {
       }
       lineRef.current = {...line}
       auxModelRender(['line',line,getLineModelDetail()], true)
-      // T
     }
   }
 
@@ -640,7 +636,6 @@ function App() {
     }
     setUnFold(null)
     canvasRender()
-    // Todo
     if(pointActive!==null&&auxCtxRef.current){
       const active = points[pointActive]
       if(auxContext.index!==pointActive||auxContext.type!==active.type){

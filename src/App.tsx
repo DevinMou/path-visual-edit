@@ -227,12 +227,8 @@ function App() {
         const nextPoint = context.active === points.length ? null : points[context.active! + 1]
         const [mx,my] = getLastM(context.active)
         if (type === 'arc') {
-          const {x1,y1,x2,y2,rx,ry,rotation,sf,cx,cy} = arcRef.current as {[k:string]:number}
-          // T
-          const A = getCA([x1-cx,cy-y1],[x2-cx,cy-y2]) > 0 
-          const laf = sf ? +A : +!A
-          arcRef.current.laf = laf
-          if (!point.preM && (mx!==x1||my!==y1||context.active===0)){
+          const {x1,y1,x2,y2,rx,ry,rotation,sf,laf} = arcRef.current as {[k:string]:number}
+          if (mx!==x1||my!==y1||context.active===0){
             point.preM = [x1,y1]
           }
           if (nextPoint && !nextPoint.preM && !(point.arguments![5] === x2 && point.arguments![6] === y2)){
@@ -241,7 +237,7 @@ function App() {
           point.arguments = [rx,ry,rotation/Math.PI*180,laf,sf,x2,y2]
         } else if (type === 'line') {
           const {mx:x1,my:y1,lx,ly,hx,vy} = auxcontext
-          if (!point.preM && (mx!==x1||my!==y1||context.active===0)){
+          if (mx!==x1||my!==y1||context.active===0){
             point.preM = [x1,y1]
           }
           const [[ox,oy],[nx,ny]] = getLineEndPoint([mx,my],point,auxcontext)
@@ -478,7 +474,7 @@ function App() {
     // const deltaX:number = (pageX - preX)/transform[2],deltaY:number = (pageY - preY)/transform[2]
     const [relativeX,relativeY] = getRelativeSite(context.transform,pageX,pageY)
     const arc = arcRef.current as {[k:string]:number}
-    let {rx,ry,cx,cy,rotation,sf} = arc
+    let {rx,ry,cx,cy,rotation,sf,x1,y1,x2,y2,as:oas,ae:oae} = arc
     const vx = relativeX - cx
     const vy = relativeY - cy
     const sin = Math.sin(rotation)
@@ -513,6 +509,11 @@ function App() {
         break
       default:
         break
+    }
+    if (arc.as !== oas || arc.ae !== oae) {
+      const A = getCA([x1-cx,cy-y1],[x2-cx,cy-y2]) > 0 
+      const laf = sf ? +A : +!A
+      arc.laf = laf
     }
     const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
     context.translateAnimate?.push(['arc',arc,{pb,pr,pa,ps,pe,pd,dr,po}])

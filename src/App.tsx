@@ -644,6 +644,8 @@ function App() {
         auxContext.type = active.type || ''
         auxRender()
       }
+    }else {
+      auxContext.index = pointActive
     }
   }, [points,pointActive])
   useEffect(()=>{
@@ -712,13 +714,19 @@ function App() {
           </div>
         </TouchItem>
       </div>
-      <div className="points">
+      {/* <div className="points">
         {
           points.map((item,index)=>(
             <PointC key={index} active={pointActive===index} index={index} unfold={unfold===index} data={item} clickPoint={()=>clickPoint(index)} selectChange={(event,value)=>selectChange(event,value,index)} appendPoint={appendPoint} setPoints={setPoints}/>
           ))
         }
         <button onClick={()=>appendPoint(points.length)}>add point</button>
+      </div> */}
+      <div className="right-bar">
+        <div className="points"></div>
+        <div className="attributes-board">
+        <PointC active={pointActive!==null} index={pointActive!} unfold={unfold===pointActive} data={auxData!} clickPoint={()=>clickPoint(pointActive!)} selectChange={(event,value)=>selectChange(event,value,pointActive!)} appendPoint={appendPoint} setPoints={setPoints}/>
+        </div>
       </div>
     </div>
   );

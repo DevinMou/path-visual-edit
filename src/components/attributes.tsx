@@ -8,13 +8,9 @@ interface Pf {
 }
 
 interface PointType {
-  active: boolean
-  clickPoint: ()=>void
   index: number
-  unfold: boolean
   data: Point
   selectChange: (event:React.MouseEvent,value:string)=>void
-  appendPoint: (index:number)=>void
   setPoints(points:Point[] | Pf):void
 }
 
@@ -64,7 +60,7 @@ function PointArguments ({type,args,pointArguments,index,handle,isPreM}:{type:st
     </div>
 }
 
-export default function PointC ({active,clickPoint,index,unfold,data,selectChange,appendPoint,setPoints}:PointType) {
+export default function PointC ({index,data,selectChange,setPoints}:PointType) {
   const selectCancle = ()=>{
 
   }
@@ -83,19 +79,33 @@ export default function PointC ({active,clickPoint,index,unfold,data,selectChang
 
   return (
     <>
-      <div className="insert-before" onClick={()=>appendPoint(index)}></div>
       <div className="point">
-        <div className={`select-area${active?' active':''}`} onClick={clickPoint}></div>
         <div className="point-main">
+          {
+            data&&data.hasOwnProperty('preM') ? 
+              data.preM ? (
+                <div className="point-row">
+                  <span className="point-type">M</span>
+                  <PointArguments type="M" args={data.preM} pointArguments={pointArguments} index={index} isPreM={true} handle={handleChange}/>
+                </div>
+              ) : (
+                <div className="point-row">
+                  <span className="point-type">M</span>
+                  <div className="connect"></div>
+                </div>
+              )
+             : null
+          }
           {
             data&&data.type ? (
               <div className="point-row">
-                <Select className="point-type" unfold={unfold} value={data.type} options={pointType} handleChange={(event,value)=>selectChange(event,value)}></Select>
+                <Select className="point-type" unfold={false} value={data.type} options={pointType} handleChange={(event,value)=>selectChange(event,value)}></Select>
+                <PointArguments type={data.type} args={data.arguments!} pointArguments={pointArguments} index={index} handle={handleChange}/>
               </div>
             ) : null
           }
-          <div className={`point-row${!data.type||unfold?'':' hidden'}`}>
-            <Select className="point-type" unfold={unfold} options={pointType} handleChange={(event,value)=>selectChange(event,value)} handleClose={selectCancle}></Select>
+          <div className={`point-row${!data||!data.type?'':' hidden'}`}>
+            <Select className="point-type" unfold={false} options={pointType} handleChange={(event,value)=>selectChange(event,value)} handleClose={selectCancle}></Select>
           </div>
         </div>
       </div>

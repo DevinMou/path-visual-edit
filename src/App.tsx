@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './App.scss';
 import PointC from './components/point'
+import AttributeS from './components/attributes'
 import {TouchItem, RegisterType, touchContext} from './components/touch'
 
 export interface Point {
@@ -723,9 +724,15 @@ function App() {
         <button onClick={()=>appendPoint(points.length)}>add point</button>
       </div> */}
       <div className="right-bar">
-        <div className="points"></div>
+        <div className="points">
+        {
+          points.map((item,index)=>(
+            <PointC key={index} active={pointActive===index} index={index} unfold={unfold===index} data={item} clickPoint={()=>clickPoint(index)} selectChange={(event,value)=>selectChange(event,value,index)} appendPoint={appendPoint} setPoints={setPoints}/>
+          ))
+        }
+        </div>
         <div className="attributes-board">
-        <PointC active={pointActive!==null} index={pointActive!} unfold={unfold===pointActive} data={auxData!} clickPoint={()=>clickPoint(pointActive!)} selectChange={(event,value)=>selectChange(event,value,pointActive!)} appendPoint={appendPoint} setPoints={setPoints}/>
+        <AttributeS index={pointActive!} data={auxData!} selectChange={(event,value)=>selectChange(event,value,pointActive!)} setPoints={setPoints}/>
         </div>
       </div>
     </div>

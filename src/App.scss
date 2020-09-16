@@ -84,8 +84,19 @@
       }
     }
   }
-  .points {
-    width: 300px;
-    flex: 0 0 auto;
+  .right-bar {
+    width: 240px;
+    .points {
+      width: 300px;
+      flex: 0 0 auto;
+      .point-row {
+        &.hidden {
+          display: none;
+        }
+      }
+    }
+    .attributes-board {
+      
+    }
   }
 }

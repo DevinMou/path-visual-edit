@@ -11,12 +11,20 @@ export interface Point {
   preM?: [number,number]
 }
 
+export interface SetAttributesType {
+  isPreM:boolean
+  pointIndex:number
+  argumentIndex:number
+  value:string
+}
+
 interface pArguments {
   [key: string]: {label?:string[];limit?:string[];init?:(x:number,y:number)=>{arguments:number[]}}
 }
 
 type AMT = 'pb'|'pr'|'pa'|'ps'|'pe'|'pd'|'po'|'dr'
-type LMT = 'pm'|'pl'|'ph'|'pv' 
+type LMT = 'pm'|'pl'|'ph'|'pv'
+type BMT = 'pm'|'pa'|'pb'|'pe'
 interface ContextType {
   wheelAnimate?:Animate
   translateAnimate?:Animate
@@ -27,6 +35,7 @@ interface ContextType {
   onModel?:boolean
   active?:number
   points?:Point[]
+  inputTimer?:number|null
 }
 
 const pointArguments: pArguments = {
@@ -207,6 +216,7 @@ function App() {
   
   type ArcType = ['arc',{[k:string]:number},{[k in AMT]:k extends 'dr' ? number : number[]}]
   type LineType = ['line',{[k:string]:number},{[k in LMT]?:number[]}]
+  type BezierType = ['bezier',{[k:string]:number},{[k in BMT]?:number[]}]
 
   const getLineEndPoint = (M:[number,number],point:Point,ctx:LineType[1]) => {
     const {mx,my,lx,ly,hx,vy} = ctx
@@ -246,6 +256,8 @@ function App() {
             nextPoint.preM = [ox,oy]
           }
           point.arguments = [lx,ly,hx,vy].filter(item=>item!==undefined)
+        } else if (type === 'bezier') {
+
         }
         return [...points]
       })
@@ -319,6 +331,9 @@ function App() {
     const [x,y] = hasPreM&&currentPoint.preM? currentPoint.preM : getLastM(index)
     const point = pointArguments[value]
     if(hasPreM){
+      if (value==='M'){
+        return
+      }
       const {arguments:args} = point.init!(x,y)
       currentPoint.arguments = args
       currentPoint.type = value
@@ -420,6 +435,16 @@ function App() {
     ctx.moveTo(x1,y1)
     ctx.lineTo(x,y)
     ctx.stroke()
+  }
+
+  const inputDebounce = () => {
+    if(typeof context.inputTimer === 'number'){
+      window.clearTimeout(context.inputTimer)
+      context.inputTimer = null
+    }
+    context.inputTimer = window.setTimeout(()=>{
+      auxRender()
+    },500)
   }
 
   const auxRender = () => {
@@ -607,6 +632,18 @@ function App() {
     const pv = vy === undefined ? undefined : [mx,vy]
     return {pm,pl,ph,pv} as LineModelType
   }
+  const setAttributes = ({isPreM,pointIndex,argumentIndex,value}:SetAttributesType) => {
+    inputDebounce()
+    setPoints(points=>{
+      const arr = [...points]
+      if (isPreM) {
+        arr[pointIndex].preM![argumentIndex] = +value
+      }else {
+        arr[pointIndex].arguments![argumentIndex] = +value
+      }
+      return arr
+    })
+  }
 
   useEffect(()=>{
     const {x,y} = canvasBoardRef.current?.getBoundingClientRect()!
@@ -640,9 +677,12 @@ function App() {
     canvasRender()
     if(pointActive!==null&&auxCtxRef.current){
       const active = points[pointActive]
-      if(auxContext.index!==pointActive||auxContext.type!==active.type){
+      // if(auxContext.index!==pointActive||auxContext.type!==active.type){
         auxContext.index = pointActive
         auxContext.type = active.type || ''
+      //   auxRender()
+      // }
+      if(typeof context.inputTimer !== 'number'){
         auxRender()
       }
     }else {
@@ -727,12 +767,16 @@ function App() {
         <div className="points">
         {
           points.map((item,index)=>(
-            <PointC key={index} active={pointActive===index} index={index} unfold={unfold===index} data={item} clickPoint={()=>clickPoint(index)} selectChange={(event,value)=>selectChange(event,value,index)} appendPoint={appendPoint} setPoints={setPoints}/>
+            <PointC key={index} active={pointActive===index} index={index} unfold={unfold===index} points={points} data={item} clickPoint={()=>clickPoint(index)} selectChange={(event,value)=>selectChange(event,value,index)} appendPoint={appendPoint}/>
           ))
         }
+        {/* <div className={`point-row${!points.length||points[points.length-1].type?'':' hidden'}`}>
+          <Select className="point-type" unfold={false} handleChange={(event,value)=>selectChange(event,value,pointActive!)}></Select>
+        </div> */}
+        <button onClick={()=>appendPoint(points.length)}>add point</button>
         </div>
         <div className="attributes-board">
-        <AttributeS index={pointActive!} data={auxData!} selectChange={(event,value)=>selectChange(event,value,pointActive!)} setPoints={setPoints}/>
+        <AttributeS index={pointActive!} data={auxData!} selectChange={(event,value)=>selectChange(event,value,pointActive!)} setAttributes={setAttributes}/>
         </div>
       </div>
     </div>

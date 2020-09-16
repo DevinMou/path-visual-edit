@@ -9,13 +9,13 @@ interface Pf {
 
 interface PointType {
   active: boolean
+  points: Point[]
   clickPoint: ()=>void
   index: number
   unfold: boolean
   data: Point
   selectChange: (event:React.MouseEvent,value:string)=>void
   appendPoint: (index:number)=>void
-  setPoints(points:Point[] | Pf):void
 }
 
 interface pArguments {
@@ -35,18 +35,6 @@ const pointArguments: pArguments = {
   Z: {},
 }
 
-const pointType: {value: any;label: string}[] = [
-  {value:'M',label:'M'},
-  {value:'L',label:'L'},
-  {value:'H',label:'H'},
-  {value:'V',label:'V'},
-  {value:'C',label:'C'},
-  {value:'S',label:'S'},
-  {value:'Q',label:'Q'},
-  {value:'T',label:'T'},
-  {value:'A',label:'A'},
-  {value:'Z',label:'Z'}]
-
 function PointArguments ({type,args,pointArguments,index,handle,isPreM}:{type:string;args:number[];pointArguments:pArguments;index:number;handle:(...args:any[])=>void;isPreM?:boolean}) {
 
   return  <div className="point-arguments">
@@ -64,23 +52,27 @@ function PointArguments ({type,args,pointArguments,index,handle,isPreM}:{type:st
     </div>
 }
 
-export default function PointC ({active,clickPoint,index,unfold,data,selectChange,appendPoint,setPoints}:PointType) {
+export default function PointC ({active,clickPoint,index,unfold,data,points,selectChange,appendPoint}:PointType) {
   const selectCancle = ()=>{
 
   }
+  const disableOption = useMemo(()=>{
+    const current = points[index]
+    const pre = index===0 ? null : points[index-1]
+    const next = index===points.length-1 ? null : points[index+1]
+    const disable = []
+    if(!pre&&current.preM){
+      disable.push('M')
+    }
+    if(pre&&(!pre.type||!['C','S'].includes(pre.type))){
+      disable.push('S')
+    }
+    if(pre&&(!pre.type||!['Q','T'].includes(pre.type))){
+      disable.push('T')
+    }
+    if(next){}
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>,pointIndex:number,argumentIndex:number,isPreM?:boolean) => {
-    setPoints(points=>{
-      const arr = [...points]
-      if (isPreM) {
-        arr[pointIndex].preM![argumentIndex] = +event.target?.value
-      }else {
-        arr[pointIndex].arguments![argumentIndex] = +event.target?.value
-      }
-      return arr
-    })
-  }
-
+  },[points,index])
   return (
     <>
       <div className="insert-before" onClick={()=>appendPoint(index)}></div>
@@ -90,12 +82,12 @@ export default function PointC ({active,clickPoint,index,unfold,data,selectChang
           {
             data&&data.type ? (
               <div className="point-row">
-                <Select className="point-type" unfold={unfold} value={data.type} options={pointType} handleChange={(event,value)=>selectChange(event,value)}></Select>
+                <Select className="point-type" unfold={unfold} value={data.type} handleChange={(event,value)=>selectChange(event,value)}></Select>
               </div>
             ) : null
           }
           <div className={`point-row${!data.type||unfold?'':' hidden'}`}>
-            <Select className="point-type" unfold={unfold} options={pointType} handleChange={(event,value)=>selectChange(event,value)} handleClose={selectCancle}></Select>
+            <Select className="point-type" unfold={unfold} handleChange={(event,value)=>selectChange(event,value)} handleClose={selectCancle}></Select>
           </div>
         </div>
       </div>

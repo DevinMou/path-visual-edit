@@ -5,22 +5,30 @@ interface SelectProps<T> {
   className?: string
   unfold?: boolean
   value?:T
-  options:{
-    value: T
-    label: string
-  }[]
   handleChange: (...args:any[])=>void|boolean
   handleClose?: ()=>void
 }
 
-const Select:<T>({className,unfold,value,options,handleChange,handleClose}:SelectProps<T>)=>React.FunctionComponentElement<SelectProps<T>> = ({className, unfold,value,options,handleChange,handleClose})=> {
+const options: {value: any;label: string}[] = [
+  {value:'M',label:'M'},
+  {value:'L',label:'L'},
+  {value:'H',label:'H'},
+  {value:'V',label:'V'},
+  {value:'C',label:'C'},
+  {value:'S',label:'S'},
+  {value:'Q',label:'Q'},
+  {value:'T',label:'T'},
+  {value:'A',label:'A'},
+  {value:'Z',label:'Z'}]
+
+const Select:<T>({className,unfold,value,handleChange,handleClose}:SelectProps<T>)=>React.FunctionComponentElement<SelectProps<T>> = ({className, unfold,value,handleChange,handleClose})=> {
   const context = useRef({map:new Map()}).current
   const [selected,setSelected] = useState(false)
   const dist = useMemo(()=>{
     context.map.clear()
     options.forEach(item=>context.map.set(item.value,item.label))
     return context.map
-  },[options, context.map])
+  },[context.map])
   const optionClick = (event:React.MouseEvent,value:any)=>{
     if(handleChange(event, value))return
     setSelected(false)

@@ -94,9 +94,14 @@
           display: none;
         }
       }
+      .append-btn {
+        &.hidden {
+          display: none;
+        }
+      }
     }
     .attributes-board {
-      
+
     }
   }
 }

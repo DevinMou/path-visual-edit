@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react'
 import './point.scss'
 import Select from './select'
-import { Point, SetAttributesType } from '../App'
+import { Point, SetAttributesType, pointArguments } from '../App'
 
 interface Pf {
   (points:Point[]):Point[]
@@ -18,7 +18,7 @@ interface pArguments {
   [key: string]: {label?:string[];limit?:string[];init?:(x:number,y:number)=>{preM?:[number,number];arguments:number[]}}
 }
 
-const pointArguments: pArguments = {
+/* const pointArguments: pArguments = {
   M: {label:['x','y'],init:(x,y)=>({arguments:[x+10,y+10]})},
   L: {label:['x','y'],init:(x,y)=>({arguments:[x+50,y+50]})},
   H: {label:['x'],init:(x,y)=>({arguments:[x+50]})},
@@ -29,7 +29,7 @@ const pointArguments: pArguments = {
   T: {label:['x','y'],init:(x,y)=>({arguments:[x+15,y]})},
   A: {label:['rx','ry','rotate','l-a','c-w','x','y'],init:(x,y)=>({preM:[x,y],arguments:[50,50,0,0,1,x+100,y]})},
   Z: {},
-}
+} */
 
 function PointArguments ({type,args,pointArguments,index,handle,isPreM}:{type:string;args:number[];pointArguments:pArguments;index:number;handle:(...args:any[])=>void;isPreM?:boolean}) {
 

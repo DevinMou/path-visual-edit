@@ -42,6 +42,14 @@
           color: #ffffff;
           cursor: default;
         }
+        &.disable{
+          color: #999;
+          &:hover {
+            background-color: unset;
+            color: #999;
+            // cursor: inherit;
+          }
+        }
       }
   }
 }

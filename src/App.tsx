@@ -38,12 +38,12 @@ interface ContextType {
   inputTimer?:number|null
 }
 
-const pointArguments: pArguments = {
+export const pointArguments: pArguments = {
   M: {label:['x','y'],init:(x,y)=>({arguments:[x+10,y+10]})},
   L: {label:['x','y'],init:(x,y)=>({arguments:[x+50,y+50]})},
   H: {label:['x'],init:(x,y)=>({arguments:[x+50]})},
   V: {label:['y'],init:(x,y)=>({arguments:[y+50]})},
-  C: {label:['x1','y1','x2','y2','x','y'],init:(x,y)=>({arguments:[x+5,y-10,x+10,y-10,x+15,y]})},
+  C: {label:['x1','y1','x2','y2','x','y'],init:(x,y)=>({arguments:[x+25,y-20,x+40,y-20,x+55,y]})},
   S: {label:['x2','y2','x','y'],init:(x,y)=>({arguments:[x+10,y-15,x+20,y]})},
   Q: {label:['x1','y1','x','y'],init:(x,y)=>({arguments:[x+10,y-15,x+20,y]})},
   T: {label:['x','y'],init:(x,y)=>({arguments:[x+15,y]})},
@@ -230,20 +230,46 @@ function App() {
     }
   }
 
-  const auxModelRender = ([type,auxcontext,model]:ArcType | LineType, noAnimate?:boolean)=>{
+  const getBezierEndPoint = (point:Point,ctx:BezierType[1]) => {
+    const {x,y} = ctx
+    const arg = point.arguments
+    switch (point.type) {
+      case 'C':
+        return [[arg![4],arg![5]],[x,y]]
+      case 'S':
+        return [[arg![2],arg![3]],[x,y]]
+      case 'Q':
+        return [[arg![2],arg![3]],[x,y]]
+      case 'T':
+        return [[arg![0],arg![1]],[x,y]]
+    }
+  }
+
+  const auxModelRender = ([type,auxcontext,model]:ArcType | LineType | BezierType, noAnimate?:boolean)=>{
     if(!noAnimate){
       context.onModel = true
       setPoints(points => {
         const point = points![context.active!]
+        const prevPoint = context.active ? points[context.active-1] : null
         const nextPoint = context.active === points.length ? null : points[context.active! + 1]
         const [mx,my] = getLastM(context.active)
         if (type === 'arc') {
           const {x1,y1,x2,y2,rx,ry,rotation,sf,laf} = arcRef.current as {[k:string]:number}
-          if (mx!==x1||my!==y1||context.active===0){
+          /* if (mx!==x1||my!==y1||context.active===0){
             point.preM = [x1,y1]
+          } */
+          if (!point.preM&&context.active&&(mx!==x1||my!==y1||context.active===0)){
+            if(['H','V'].includes(prevPoint?.type!)){
+              prevPoint!.type = 'L'
+              prevPoint!.arguments = [x1,y1]
+            }else{
+              const len = prevPoint!.arguments!.length
+              prevPoint!.arguments![len-2] = x1
+              prevPoint!.arguments![len-1] = y1
+            }
           }
           if (nextPoint && !nextPoint.preM && !(point.arguments![5] === x2 && point.arguments![6] === y2)){
-            nextPoint.preM = [point.arguments![5],point.arguments![6]]
+            // nextPoint.preM = [point.arguments![5],point.arguments![6]]
           }
           point.arguments = [rx,ry,rotation/Math.PI*180,laf,sf,x2,y2]
         } else if (type === 'line') {
@@ -253,28 +279,73 @@ function App() {
           }
           const [[ox,oy],[nx,ny]] = getLineEndPoint([mx,my],point,auxcontext)
           if (nextPoint && !nextPoint.preM && !(ox===nx&&oy===ny)){
-            nextPoint.preM = [ox,oy]
+            // nextPoint.preM = [ox,oy]
           }
           point.arguments = [lx,ly,hx,vy].filter(item=>item!==undefined)
         } else if (type === 'bezier') {
-
+          const {mx:x0,my:y0,x1,x2,y1,y2,x,y} = auxcontext
+          if (mx!==x0||my!==y0||context.active===0){
+            point.preM = [x0,y0]
+          }
+          const [[ox,oy],[nx,ny]] = getBezierEndPoint(point,auxcontext)
+          if (nextPoint && !nextPoint.preM && !(ox===nx&&oy===ny)){
+            // nextPoint.preM = [ox,oy]
+          }
+          point.arguments = [x1,y1,x2,y2,x,y].filter(item=>item!==undefined)
         }
         return [...points]
       })
     }
-    switch (type) {
-      case 'arc':
-        setArcModelData(model as ArcType[2])
-        arcRender(auxcontext as ArcType[1])
-      break
-      case 'line':
-        setLineModelData(model as LineType[2])
-        const {mx,my,lx,ly,hx,vy} = auxcontext
-        const linecontext = lx !== undefined ? [mx,my,lx,ly] : hx !== undefined ? [mx,my,hx,my] : [mx,my,mx,vy]
-        lineRender(linecontext)
-      break
-    }
-    
+    setPoints(points => {
+      switch (type) {
+        case 'arc':
+          setArcModelData(model as ArcType[2])
+          arcRender(auxcontext as ArcType[1])
+        break
+        case 'line':
+          setLineModelData(model as LineType[2])
+          const {mx,my,lx,ly,hx,vy} = auxcontext
+          const linecontext = lx !== undefined ? [mx,my,lx,ly] : hx !== undefined ? [mx,my,hx,my] : [mx,my,mx,vy]
+          lineRender(linecontext)
+        break
+        case 'bezier':
+          setBezierModelData(model as BezierType[2])
+          const prevPoint = context.active ? points[context.active-1] : null
+          const point = points![context.active!]
+          let ctrolPoint:number[] = []
+          if (point.type === 'S'){
+            const n = prevPoint?.type === 'C' ? 2 : 0
+            const pcx = prevPoint!.arguments![n]
+            const pcy = prevPoint!.arguments![n+1]
+            const px = prevPoint!.arguments![n+2]
+            const py = prevPoint!.arguments![n+3]
+            const cx = px*2 - pcx
+            const cy = py*2 - pcy
+            ctrolPoint = [cx,cy]
+          }
+          if (point.type === 'T'){
+            const ends = []
+            let pointer = context.active! - 1
+            let tempPoint
+            while(tempPoint = points[pointer],tempPoint.type==='T'){
+              ends.push([...tempPoint.arguments!])
+            }
+            if(tempPoint.type==='Q'){
+              ends.push([tempPoint.arguments![2],tempPoint.arguments![3]])
+              let cx = tempPoint.arguments![0]
+              let cy = tempPoint.arguments![1]
+              ends.forEach(([tx,ty]) => {
+                cx = 2*tx - cx
+                cy = 2*ty - cy
+              })
+              ctrolPoint = [cx,cy]
+            }
+          }
+          bezierRender(auxcontext as BezierType[1],point.type!,ctrolPoint)
+        break
+      }
+      return points
+    })
   }
   if(!context.wheelAnimate){
     context.wheelAnimate = new Animate(wheel,true)
@@ -342,8 +413,9 @@ function App() {
         currentPoint.preM = [x+10,y+10]
       }
       else if (value==='A'){
-        currentPoint.preM = [x+10,y+10]
-        const {arguments:args} = point.init!(x+10,y+10)
+        // currentPoint.preM = [x+10,y+10]
+        currentPoint.preM = undefined
+        const {arguments:args} = point.init!(x,y)
         currentPoint.arguments = args
         currentPoint.type = value
       }
@@ -379,7 +451,6 @@ function App() {
     if (ctx) {
       let d=""
       if(pointActive!==null){
-        console.log(278)
         // const [x,y] = getLastM(pointActive)
         points.slice(0,pointActive).forEach(item=>{
           item.preM&&(d+='M'+item.preM.join(' '))
@@ -392,10 +463,40 @@ function App() {
             if(index===0){
               d+='M'
               d+=item.preM?item.preM.join(' '):(nx+' '+ny)
+              if (item.type === 'S'){
+                const prevPoint = points[pointActive]
+                const n = prevPoint?.type === 'C' ? 2 : 0
+                const pcx = prevPoint!.arguments![n]
+                const pcy = prevPoint!.arguments![n+1]
+                const px = prevPoint!.arguments![n+2]
+                const py = prevPoint!.arguments![n+3]
+                const cx = px*2 - pcx
+                const cy = py*2 - pcy
+                d+='C'+[cx,cy,...item.arguments].join(' ')
+              }else if (item.type === 'T'){
+                const ends = []
+                let pointer = context.active! - 1
+                let tempPoint
+                while(tempPoint = points[pointer],tempPoint.type==='T'){
+                  ends.push([...tempPoint.arguments!])
+                }
+                if(tempPoint.type==='Q'){
+                  ends.push([tempPoint.arguments![2],tempPoint.arguments![3]])
+                  let cx = tempPoint.arguments![0]
+                  let cy = tempPoint.arguments![1]
+                  ends.forEach(([tx,ty]) => {
+                    cx = 2*tx - cx
+                    cy = 2*ty - cy
+                  })
+                  d+='Q'+[cx,cy,...item.arguments].join(' ')
+                }
+              }else{
+                item.type&&(d+=item.type+item.arguments!.join(' '))
+              }
             }else{
               item.preM&&(d+='M'+item.preM.join(' '))
+              item.type&&(d+=item.type+item.arguments!.join(' '))
             }
-            item.type&&(d+=item.type+item.arguments!.join(' '))
           })
         }
       }else{
@@ -434,6 +535,30 @@ function App() {
     ctx.beginPath()
     ctx.moveTo(x1,y1)
     ctx.lineTo(x,y)
+    ctx.stroke()
+  }
+
+  const bezierRender = ({mx,my,x1,y1,x2,y2,x,y}:{[k:string]:number},type:string,[cx,cy]:number[]) => {
+    const ctx = auxCtxRef.current!
+    ctx.clearRect(0,0,auxCanvas.width,auxCanvas.height)
+    ctx.beginPath()
+    ctx.moveTo(mx,my)
+    switch (type) {
+      case 'C':
+        ctx.bezierCurveTo(x1,y1,x2,y2,x,y)
+        break
+      case 'Q':
+        ctx.quadraticCurveTo(x1,y1,x,y)
+        break
+      case 'S':
+        ctx.bezierCurveTo(cx,cy,x2,y2,x,y)
+        break
+      case 'T':
+        ctx.quadraticCurveTo(cx,cy,x,y)
+        break
+      default:
+        break
+    }
     ctx.stroke()
   }
 
@@ -487,6 +612,32 @@ function App() {
       }
       lineRef.current = {...line}
       auxModelRender(['line',line,getLineModelDetail()], true)
+    } else if (['C','S','Q','T'].includes(active.type!)) {
+      const [mx,my] = getLastM(pointActive!)
+      let {x1,y1,x2,y2,x,y} = bezierRef.current
+      let bezier = {}
+      switch (active.type) {
+        case 'C':
+          [x1,y1,x2,y2,x,y] = active.arguments
+          bezier = {mx,my,x1,y1,x2,y2,x,y}
+          break
+        case 'S':
+          [x2,y2,x,y] = active.arguments
+          bezier = {mx,my,x2,y2,x,y}
+          break
+        case 'Q':
+          [x1,y1,x,y] = active.arguments
+          bezier = {mx,my,x1,y1,x,y}
+          break
+        case 'T':
+          [x,y] = active.arguments
+          bezier = {mx,my,x,y}
+          break
+        default:
+          break
+      }
+      bezierRef.current = {...bezier}
+      auxModelRender(['bezier',bezier,getBezierModelDetail()], true)
     }
   }
 
@@ -572,6 +723,36 @@ function App() {
     context.translateAnimate?.push(['line',line,res])
   }
 
+  const bezierModelMouseHandle = (pageX: number, preX: number, pageY:number,preY:number,type:string) => {
+    const [relativeX,relativeY] = getRelativeSite(context.transform,pageX,pageY)
+    const bezier = bezierRef.current as {[k:string]:number}
+    switch (type) {
+      case 'pm':
+        bezier.mx = relativeX
+        bezier.my = relativeY
+        break
+      case 'pa':
+        bezier.x1 = relativeX
+        bezier.y1 = relativeY
+        break
+      case 'pb':
+        bezier.x2 = relativeX
+        bezier.y2 = relativeY
+        break
+      case 'pe':
+        bezier.x = relativeX
+        bezier.y = relativeY
+        break
+      default:
+        break
+    }
+    const {pm,pa,pb,pe} = getBezierModelDetail()
+    const res = {pm,pe} as BezierModelType
+    pa && (res.pa = pa)
+    pb && (res.pb = pb)
+    context.translateAnimate?.push(['bezier',bezier,res])
+  }
+
   const modelMouseHandle = (pageX: number, preX: number, pageY:number,preY:number,type:string, model: string)=>{
     const [relativeX,relativeY] = getRelativeSite(context.transform,pageX,pageY)
     if (model === 'arc') {
@@ -600,6 +781,15 @@ function App() {
     pv:[0,0]
   })
 
+  type BezierModelType = {[k in BMT]?:number[]}
+
+  const [bezierModelData,setBezierModelData] = useState<BezierModelType>({
+    pm:[0,0],
+    pa:[0,0],
+    pb:[0,0],
+    pe:[0,0]
+  })
+
   const getArcModelDetail=()=>{
     const {rx,ry,cx,cy,rotation,as,ae,sf} = arcRef.current as {[k:string]:number}
     const rotate:(x:number,y:number,r:number)=>[number,number]=(x,y,r)=>{
@@ -612,8 +802,8 @@ function App() {
     const pa = rotate(rx,0,-rotation)
     const ps = rotate((rx+5)*cos(-as),-(ry+5)*sin(-as),-rotation)
     const [x1,y1] = rotate(rx*cos(-as),-ry*sin(-as),-rotation)
-    arcRef.current.x1 = x1
-    arcRef.current.y1 = y1
+    arcRef.current.x1 = +x1.toFixed(7)
+    arcRef.current.y1 = +y1.toFixed(7)
     const pe = rotate((rx+5)*cos(-ae),-(ry+5)*sin(-ae),-rotation)
     const [x2,y2] = rotate(rx*cos(-ae),-ry*sin(-ae),-rotation)
     arcRef.current.x2 = x2
@@ -632,6 +822,16 @@ function App() {
     const pv = vy === undefined ? undefined : [mx,vy]
     return {pm,pl,ph,pv} as LineModelType
   }
+
+  const getBezierModelDetail:()=>BezierModelType=()=>{
+    const {mx,my,x1,y1,x2,y2,x,y} = bezierRef.current as {[k:string]:number}
+    const pm = [mx,my]
+    const pa = x1 === undefined ? undefined : [x1,y1]
+    const pb = x2 === undefined ? undefined : [x2,y2]
+    const pe = x === undefined ? undefined : [x,y]
+    return {pm,pa,pb,pe} as BezierModelType
+  }
+
   const setAttributes = ({isPreM,pointIndex,argumentIndex,value}:SetAttributesType) => {
     inputDebounce()
     setPoints(points=>{
@@ -653,6 +853,9 @@ function App() {
   useEffect(()=>{
     ctxRef.current = canvasRef.current?.getContext('2d')
     auxCtxRef.current = auxRef.current?.getContext('2d')
+    if (auxCtxRef.current) {
+      auxCtxRef.current!.strokeStyle = '#c30e0e'
+    }
   },[])
 
   useEffect(()=>{
@@ -671,7 +874,7 @@ function App() {
   useEffect(()=>{
     if(context.onModel){
       context.onModel = false
-      return
+      // return
     }
     setUnFold(null)
     canvasRender()
@@ -710,6 +913,8 @@ function App() {
             arcModelMouseHandle(pageX,this.pageX!,pageY,this.pageY!,auxContext.name)
           } else if (auxContext.model === 'line') {
             lineModelMouseHandle(pageX,this.pageX!,pageY,this.pageY!,auxContext.name)
+          } else if (auxContext.model === 'bezier') {
+            bezierModelMouseHandle(pageX,this.pageX!,pageY,this.pageY!,auxContext.name)
           }
         }
       })
@@ -750,7 +955,13 @@ function App() {
                   ))
                 }
               </div>
-              <div className="bezier-model" style={{display:pointActive!==null && ['C','S','Q','T'].includes(auxData?.type!) ? 'block':'none'}}></div>
+              <div className="bezier-model" style={{display:pointActive!==null && ['C','S','Q','T'].includes(auxData?.type!) ? 'block':'none'}}>
+                {
+                  Object.entries(bezierModelData).map(([name, val])=>(
+                    <TouchPoint name={name} model="bezier" data={val as number[]}  key={name}></TouchPoint>
+                  ))
+                }
+              </div>
             </div>
           </div>
         </TouchItem>
@@ -773,7 +984,7 @@ function App() {
         {/* <div className={`point-row${!points.length||points[points.length-1].type?'':' hidden'}`}>
           <Select className="point-type" unfold={false} handleChange={(event,value)=>selectChange(event,value,pointActive!)}></Select>
         </div> */}
-        <button onClick={()=>appendPoint(points.length)}>add point</button>
+        <button className={ `append-btn ${points[points.length-1].type ? '' : 'hidden'}` } onClick={()=>appendPoint(points.length)}>add point</button>
         </div>
         <div className="attributes-board">
         <AttributeS index={pointActive!} data={auxData!} selectChange={(event,value)=>selectChange(event,value,pointActive!)} setAttributes={setAttributes}/>

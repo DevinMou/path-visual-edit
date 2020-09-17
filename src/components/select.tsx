@@ -5,6 +5,7 @@ interface SelectProps<T> {
   className?: string
   unfold?: boolean
   value?:T
+  disableOption?:string[]
   handleChange: (...args:any[])=>void|boolean
   handleClose?: ()=>void
 }
@@ -21,7 +22,7 @@ const options: {value: any;label: string}[] = [
   {value:'A',label:'A'},
   {value:'Z',label:'Z'}]
 
-const Select:<T>({className,unfold,value,handleChange,handleClose}:SelectProps<T>)=>React.FunctionComponentElement<SelectProps<T>> = ({className, unfold,value,handleChange,handleClose})=> {
+const Select:<T>({className,unfold,value,disableOption,handleChange,handleClose}:SelectProps<T>)=>React.FunctionComponentElement<SelectProps<T>> = ({className, unfold,value,disableOption,handleChange,handleClose})=> {
   const context = useRef({map:new Map()}).current
   const [selected,setSelected] = useState(false)
   const dist = useMemo(()=>{
@@ -46,7 +47,7 @@ const Select:<T>({className,unfold,value,handleChange,handleClose}:SelectProps<T
       <span className={ value ? "select-value": "select-empty"} onClick={()=>setSelected(true)}>{ value ? dist.get(value) : '+'}</span>
       <span className={`select-options${selected?' active':''}`}>
         {
-          options.map((item,index)=><span key={index} className={value===item.value?'active':''} onClick={event=>optionClick(event,item.value)}>{item.label}</span>)
+          options.map((item,index)=><span key={index} className={ `${value===item.value?'active':''} ${disableOption&&disableOption.includes(item.value)?'disable':''}`.trim()} onClick={event=>!(disableOption&&disableOption.includes(item.value))&&optionClick(event,item.value)}>{item.label}</span>)
         }
       </span>
     </span>

@@ -137,16 +137,19 @@ function getArcCenter([x1,y1]:[number,number],[x2,y2]:[number,number],a:number,b
   let center
   if(res[0].join('')!==res[1].join('')){
     const [x,y] = res[0]
-    const la = getCA([x1-x,y-y1],[x2-x,y-y2]) > Math.PI/2 ? 1 : 0
-    center = (sf===1?la === laf:la!==laf) ? res[0] : res[1]
+    const A = getCA([x1-x,y-y1],[x2-x,y-y2])
+    const la = A < Math.PI
+    const isHit = [true,false][+(sf===laf)] === la
+    center = isHit ? res[0] : res[1]
   } else {
     center = res[0]
   }
-  return center.map(item => +item.toFixed(7))
+  return center.map(item => +item.toFixed(5))
 }
 
 function getCA([x1,y1]:[number,number],[x2,y2]:[number,number]):number{
-  return Math.atan2(x1*y2-x2*y1,y1*y2+x1*x2)
+  const a = Math.atan2(x2*y1-x1*y2,y1*y2+x1*x2)
+  return a>=0?a:2*Math.PI+a
  }
 
 declare global {
@@ -258,6 +261,9 @@ function App() {
           /* if (mx!==x1||my!==y1||context.active===0){
             point.preM = [x1,y1]
           } */
+          if (point.preM) {
+            point.preM = [x1,y1]
+          }
           if (!point.preM&&context.active&&(mx!==x1||my!==y1||context.active===0)){
             if(['H','V'].includes(prevPoint?.type!)){
               prevPoint!.type = 'L'
@@ -328,10 +334,11 @@ function App() {
             let pointer = context.active! - 1
             let tempPoint
             while(tempPoint = points[pointer],tempPoint.type==='T'){
-              ends.push([...tempPoint.arguments!])
+              ends.unshift([...tempPoint.arguments!])
+              pointer--
             }
             if(tempPoint.type==='Q'){
-              ends.push([tempPoint.arguments![2],tempPoint.arguments![3]])
+              ends.unshift([tempPoint.arguments![2],tempPoint.arguments![3]])
               let cx = tempPoint.arguments![0]
               let cy = tempPoint.arguments![1]
               ends.forEach(([tx,ty]) => {
@@ -368,7 +375,6 @@ function App() {
 
       setPointActive(null)
     }
-    console.log(points[index])
   }
   const getLastM:(index?:number)=>[number,number] = (index) => {
     const points = context.points!
@@ -475,13 +481,14 @@ function App() {
                 d+='C'+[cx,cy,...item.arguments].join(' ')
               }else if (item.type === 'T'){
                 const ends = []
-                let pointer = context.active! - 1
+                let pointer = pointActive
                 let tempPoint
                 while(tempPoint = points[pointer],tempPoint.type==='T'){
-                  ends.push([...tempPoint.arguments!])
+                  ends.unshift([...tempPoint.arguments!])
+                  pointer--
                 }
                 if(tempPoint.type==='Q'){
-                  ends.push([tempPoint.arguments![2],tempPoint.arguments![3]])
+                  ends.unshift([tempPoint.arguments![2],tempPoint.arguments![3]])
                   let cx = tempPoint.arguments![0]
                   let cy = tempPoint.arguments![1]
                   ends.forEach(([tx,ty]) => {
@@ -505,14 +512,17 @@ function App() {
           item.type&&(d+=item.type+item.arguments!.join(' '))
         })
       }
-      ctx.clearRect(0,0,canvasSize[0],canvasSize[1])
-      ctx.strokeStyle = '#333333'
-      ctx.stroke(new Path2D(d))
+      if (d) {
+        ctx.clearRect(0,0,canvasSize[0],canvasSize[1])
+        ctx.strokeStyle = '#333333'
+        ctx.stroke(new Path2D(d))
+      }
     }
   }
 
   const arcSvg2Canvas = ({x1,y1,rx,ry,rotation,laf,sf,x,y}:{[k:string]:number}) => {
     const [cx,cy] = getArcCenter([x1,y1],[x,y],rx,ry,rotation,laf,sf)
+    // console.log([cx,cy])
     // const as = -Math.atan2(cy-y1,x1-cx) + rotation
     // const ae = -Math.atan2(cy-y,x-cx) + rotation
     const sin = Math.sin(rotation)
@@ -688,9 +698,12 @@ function App() {
         break
     }
     if (arc.as !== oas || arc.ae !== oae) {
-      const A = getCA([x1-cx,cy-y1],[x2-cx,cy-y2]) > 0 
-      const laf = sf ? +A : +!A
-      arc.laf = laf
+      const A = getCA([x1-cx,cy-y1],[x2-cx,cy-y2])
+      if(A!==Math.PI){
+        const a = A > Math.PI
+        const laf = sf ? +a : +!a
+        arc.laf = laf
+      }
     }
     const {pb,pr,pa,ps,pe,pd,dr,po} = getArcModelDetail()
     context.translateAnimate?.push(['arc',arc,{pb,pr,pa,ps,pe,pd,dr,po}])
@@ -794,7 +807,7 @@ function App() {
     const {rx,ry,cx,cy,rotation,as,ae,sf} = arcRef.current as {[k:string]:number}
     const rotate:(x:number,y:number,r:number)=>[number,number]=(x,y,r)=>{
       const c = cos(r),s = sin(r)
-      return [x*c+y*s+cx,y*c-x*s+cy]
+      return [x*c+y*s+cx,y*c-x*s+cy].map(item=>+item.toFixed(7)) as [number,number]
     }
     const {sin,cos} = Math
     const pb = rotate(0,sf ? -ry : ry,-rotation)
@@ -802,8 +815,8 @@ function App() {
     const pa = rotate(rx,0,-rotation)
     const ps = rotate((rx+5)*cos(-as),-(ry+5)*sin(-as),-rotation)
     const [x1,y1] = rotate(rx*cos(-as),-ry*sin(-as),-rotation)
-    arcRef.current.x1 = +x1.toFixed(7)
-    arcRef.current.y1 = +y1.toFixed(7)
+    arcRef.current.x1 = x1
+    arcRef.current.y1 = y1
     const pe = rotate((rx+5)*cos(-ae),-(ry+5)*sin(-ae),-rotation)
     const [x2,y2] = rotate(rx*cos(-ae),-ry*sin(-ae),-rotation)
     arcRef.current.x2 = x2
@@ -872,10 +885,6 @@ function App() {
   },[])
 
   useEffect(()=>{
-    if(context.onModel){
-      context.onModel = false
-      // return
-    }
     setUnFold(null)
     canvasRender()
     if(pointActive!==null&&auxCtxRef.current){
@@ -886,11 +895,12 @@ function App() {
       //   auxRender()
       // }
       if(typeof context.inputTimer !== 'number'){
-        auxRender()
+        !context.onModel && auxRender()
       }
     }else {
       auxContext.index = pointActive
     }
+    context.onModel = false
   }, [points,pointActive])
   useEffect(()=>{
     pointActive!==null&&(context.active = pointActive)

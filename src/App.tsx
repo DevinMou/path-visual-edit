@@ -152,12 +152,6 @@ function getCA([x1,y1]:[number,number],[x2,y2]:[number,number]):number{
   return a>=0?a:2*Math.PI+a
  }
 
-declare global {
-  interface Window {
-    gc: (...args:any[])=>any
-  }
-}
-window.gc = getArcCenter
 function TouchPoint({name,model,data}:{name:string;model:string;data?:number[]|null}) {
   return (
     <span className="control-point" data-name={name} data-model={model} style={{transform:data ? `translate(${data[0]}px,${data[1]}px)`:'unset',display:data?'flex':'none'}}></span>
